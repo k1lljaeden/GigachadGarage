@@ -1,6 +1,6 @@
 --=====================================================================--
---  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.3.0
---  iPhone-grade UI. Sigma-grade power. Works in every game.
+--  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.4.0
+--  Dynamic Island + Aimbot + Universal Toolkit.
 --
 --  Toggle UI : Right Shift
 --  Executor  : Solara (works on most executors too)
@@ -99,7 +99,7 @@ local Boot = {} do
 				TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 				{ Size = UDim2.fromScale(alpha, 1) }):Play()
 		end)
-		task.wait(0.12)
+		task.wait(0.1)
 	end
 
 	function Boot.Finish()
@@ -197,6 +197,7 @@ local Theme = {
 	Surface    = Color3.fromRGB(26, 26, 31),
 	SurfaceAlt = Color3.fromRGB(42, 42, 49),
 	TabBar     = Color3.fromRGB(12, 12, 15),
+	Island     = Color3.fromRGB(8, 8, 10),
 	Stroke     = Color3.fromRGB(255, 255, 255),
 	TextMain   = Color3.fromRGB(240, 240, 246),
 	TextDim    = Color3.fromRGB(154, 154, 164),
@@ -243,6 +244,7 @@ end
 local KeybindListening = 0
 local LastCaptureTick = 0
 local notifyEnabled = true
+local islandEnabled = true
 
 Boot.Step("Building interface", 0.25)
 
@@ -271,8 +273,247 @@ bind(Camera:GetPropertyChangedSignal("ViewportSize"), function()
 	Viewport = Camera.ViewportSize
 end)
 
+-- // iPhone Dynamic Island -----------------------------------------------
+local IslandHolder = new("Frame", {
+	BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 10),
+	Size = UDim2.fromOffset(420, 120),
+	ZIndex = 75,
+	Parent = Gui,
+})
+
+local IslandPill = new("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Size = UDim2.fromOffset(186, 34),
+	BackgroundColor3 = Theme.Island,
+	BorderSizePixel = 0,
+	ClipsDescendants = true,
+	Parent = IslandHolder,
+})
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = IslandPill })
+local IslandStroke = new("UIStroke", { Color = Theme.Stroke, Transparency = 0.88, Thickness = 1, Parent = IslandPill })
+
+local IslandLed = new("Frame", {
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.fromOffset(12, 17),
+	Size = UDim2.fromOffset(8, 8),
+	BackgroundColor3 = Accent,
+	BorderSizePixel = 0,
+	Parent = IslandPill,
+})
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = IslandLed })
+trackAccent(IslandLed, "BackgroundColor3")
+
+local IslandTitle = new("TextLabel", {
+	BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(26, 0),
+	Size = UDim2.new(1, -36, 0, 34),
+	Font = Enum.Font.GothamBold,
+	TextSize = 11.5,
+	TextColor3 = Theme.TextMain,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+	Text = "GIGACHAD ISLAND",
+	Parent = IslandPill,
+})
+
+local IslandSub = new("TextLabel", {
+	BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(14, 34),
+	Size = UDim2.new(1, -28, 0, 16),
+	Font = Enum.Font.Gotham,
+	TextSize = 11,
+	TextColor3 = Theme.TextDim,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+	Text = "Ready • Right Shift for UI",
+	Parent = IslandPill,
+})
+
+local IslandActions = new("Frame", {
+	BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(14, 56),
+	Size = UDim2.new(1, -28, 0, 28),
+	Parent = IslandPill,
+})
+new("UIListLayout", {
+	FillDirection = Enum.FillDirection.Horizontal,
+	Padding = UDim.new(0, 6),
+	Parent = IslandActions,
+})
+
+local function makeIslandChip(text, onClick)
+	local b = new("TextButton", {
+		Text = text,
+		Font = Enum.Font.GothamBold,
+		TextSize = 10.5,
+		TextColor3 = Theme.TextMain,
+		BackgroundColor3 = Theme.Surface,
+		BorderSizePixel = 0,
+		Size = UDim2.new(0.25, -4.5, 1, 0),
+		AutoButtonColor = false,
+		Parent = IslandActions,
+	})
+	new("UICorner", { CornerRadius = UDim.new(0, 8), Parent = b })
+	b.Activated:Connect(onClick)
+	return b
+end
+
+local islandExpanded = false
+local islandPulseToken = 0
+
+local function setIslandExpanded(exp)
+	if not islandEnabled then exp = false end
+	islandExpanded = exp
+	if exp then
+		tween(IslandPill, 0.36, { Size = UDim2.fromOffset(360, 96) }, Enum.EasingStyle.Back)
+		new("UICorner", { CornerRadius = UDim.new(0, 22), Parent = IslandPill })
+	else
+		tween(IslandPill, 0.32, { Size = UDim2.fromOffset(186, 34) }, Enum.EasingStyle.Quint)
+	end
+end
+
+local IslandHit = new("TextButton", {
+	Text = "",
+	BackgroundTransparency = 1,
+	Size = UDim2.new(1, 0, 0, 34),
+	ZIndex = 3,
+	Parent = IslandPill,
+})
+IslandHit.Activated:Connect(function()
+	setIslandExpanded(not islandExpanded)
+end)
+
+local function islandPulse(titleText, subText, holdSec)
+	if not islandEnabled then return end
+	islandPulseToken += 1
+	local token = islandPulseToken
+	IslandTitle.Text = titleText
+	if subText then IslandSub.Text = subText end
+	if not islandExpanded then
+		tween(IslandPill, 0.28, { Size = UDim2.fromOffset(268, 36) }, Enum.EasingStyle.Back)
+	end
+	task.delay(holdSec or 2.2, function()
+		if token == islandPulseToken and not islandExpanded then
+			IslandTitle.Text = "GIGACHAD ISLAND"
+			tween(IslandPill, 0.28, { Size = UDim2.fromOffset(186, 34) }, Enum.EasingStyle.Quint)
+		end
+	end)
+end
+
+-- // Notifications (iOS banners) -----------------------------------------
+local NotifHolder = new("Frame", {
+	BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 52),
+	Size = UDim2.fromOffset(380, 600),
+	ZIndex = 50,
+	Parent = Gui,
+})
+
+local notifs = {}
+local function layoutNotifs(animate)
+	local y = 0
+	for _, n in ipairs(notifs) do
+		local target = UDim2.fromOffset(0, y)
+		if animate then
+			tween(n.frame, 0.4, { Position = target }, Enum.EasingStyle.Back)
+		else
+			n.frame.Position = target
+		end
+		y += n.frame.AbsoluteSize.Y + 8
+	end
+end
+
+local function Notify(title, message, duration)
+	if islandEnabled then
+		islandPulse(title, message, duration or 2.4)
+	end
+	if not notifyEnabled then return end
+	duration = duration or 3.5
+
+	local notif = new("CanvasGroup", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromOffset(0, -80),
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Theme.Surface,
+		BorderSizePixel = 0,
+		GroupTransparency = 1,
+		ZIndex = 51,
+		Parent = NotifHolder,
+	})
+	new("UICorner", { CornerRadius = UDim.new(0, 18), Parent = notif })
+	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.9, Parent = notif })
+	new("UIPadding", {
+		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12),
+		PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
+		Parent = notif,
+	})
+
+	local icon = new("Frame", {
+		Size = UDim2.fromOffset(26, 26),
+		BackgroundColor3 = Accent,
+		BorderSizePixel = 0,
+		Parent = notif,
+	})
+	new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = icon })
+	trackAccent(icon, "BackgroundColor3")
+	new("TextLabel", {
+		BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.White,
+		Text = "✓", Parent = icon,
+	})
+
+	new("TextLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(36, 1),
+		Size = UDim2.new(1, -36, 0, 15),
+		Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Theme.TextMain,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Text = title, Parent = notif,
+	})
+	new("TextLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(36, 17),
+		Size = UDim2.new(1, -36, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		TextWrapped = true,
+		Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Text = message, Parent = notif,
+	})
+
+	table.insert(notifs, { frame = notif })
+	tween(notif, 0.45, { GroupTransparency = 0 })
+	task.defer(function() layoutNotifs(true) end)
+
+	if #notifs > 4 then
+		local old = table.remove(notifs, 1)
+		tween(old.frame, 0.25, { GroupTransparency = 1, Position = UDim2.fromOffset(0, -60) })
+		task.delay(0.3, function() old.frame:Destroy() end)
+		task.defer(function() layoutNotifs(true) end)
+	end
+
+	task.delay(duration, function()
+		if not notif.Parent then return end
+		for idx, n in ipairs(notifs) do
+			if n.frame == notif then table.remove(notifs, idx) break end
+		end
+		tween(notif, 0.3, { GroupTransparency = 1, Position = UDim2.fromOffset(0, -40) })
+		task.delay(0.32, function()
+			if notif.Parent then notif:Destroy() end
+		end)
+		layoutNotifs(true)
+	end)
+end
+
 -- // Window shell --------------------------------------------------------
-local WINDOW_W, WINDOW_H = 580, 396
+local WINDOW_W, WINDOW_H = 590, 412
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local UIScaleValue = 1
 if IsMobile then
@@ -284,7 +525,7 @@ local WinW, WinH = WINDOW_W * UIScaleValue, WINDOW_H * UIScaleValue
 local Holder = new("Frame", {
 	BackgroundTransparency = 1,
 	Size = UDim2.fromOffset(WINDOW_W, WINDOW_H),
-	Position = UDim2.fromOffset((Viewport.X - WinW) / 2, (Viewport.Y - WinH) / 2),
+	Position = UDim2.fromOffset((Viewport.X - WinW) / 2, math.max((Viewport.Y - WinH) / 2, 54)),
 	Parent = Gui,
 })
 new("UIScale", { Scale = UIScaleValue, Parent = Holder })
@@ -315,7 +556,6 @@ new("UICorner", { CornerRadius = UDim.new(0, 26), Parent = Window })
 new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Thickness = 1, Parent = Window })
 local WindowScale = new("UIScale", { Scale = 0.9, Parent = Window })
 
--- Subtle top ambient accent line inside window
 local TopLine = new("Frame", {
 	BackgroundColor3 = Accent,
 	BackgroundTransparency = 0.55,
@@ -326,7 +566,7 @@ local TopLine = new("Frame", {
 })
 trackAccent(TopLine, "BackgroundColor3")
 
--- // Header (status bar) -------------------------------------------------
+-- // Header (status bar + quick filter) ----------------------------------
 local Header = new("Frame", {
 	BackgroundTransparency = 1,
 	Size = UDim2.new(1, 0, 0, 48),
@@ -337,7 +577,7 @@ local Header = new("Frame", {
 local TimeLabel = new("TextLabel", {
 	BackgroundTransparency = 1,
 	Position = UDim2.fromOffset(18, 0),
-	Size = UDim2.new(0, 110, 1, 0),
+	Size = UDim2.new(0, 100, 1, 0),
 	Font = Enum.Font.GothamBold,
 	TextSize = 14,
 	TextColor3 = Theme.TextMain,
@@ -349,7 +589,7 @@ local TimeLabel = new("TextLabel", {
 local BrandPill = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(188, 30),
+	Size = UDim2.fromOffset(194, 30),
 	BackgroundColor3 = Theme.Surface,
 	BorderSizePixel = 0,
 	Parent = Header,
@@ -386,7 +626,7 @@ local FpsLabel = new("TextLabel", {
 	BackgroundTransparency = 1,
 	AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -18, 0, 0),
-	Size = UDim2.new(0, 140, 1, 0),
+	Size = UDim2.new(0, 145, 1, 0),
 	Font = Enum.Font.Gotham,
 	TextSize = 11,
 	TextColor3 = Theme.TextDim,
@@ -404,11 +644,39 @@ new("Frame", {
 	Parent = Header,
 })
 
+-- // Search bar inside Content top ---------------------------------------
+local SearchBarWrap = new("Frame", {
+	BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(0, 48),
+	Size = UDim2.new(1, 0, 0, 42),
+	ZIndex = 3,
+	Parent = Window,
+})
+
+local SearchBox = new("TextBox", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(1, -28, 0, 30),
+	BackgroundColor3 = Theme.Surface,
+	BorderSizePixel = 0,
+	Font = Enum.Font.Gotham,
+	TextSize = 12,
+	TextColor3 = Theme.TextMain,
+	PlaceholderText = "Search features in current tab...",
+	PlaceholderColor3 = Theme.TextFaint,
+	Text = "",
+	ClearTextOnFocus = false,
+	Parent = SearchBarWrap,
+})
+new("UICorner", { CornerRadius = UDim.new(0, 10), Parent = SearchBox })
+new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Parent = SearchBox })
+new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = SearchBox })
+
 -- // Content + Tab bar ---------------------------------------------------
 local Content = new("Frame", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(0, 48),
-	Size = UDim2.new(1, 0, 1, -104),
+	Position = UDim2.fromOffset(0, 90),
+	Size = UDim2.new(1, 0, 1, -146),
 	ClipsDescendants = true,
 	ZIndex = 2,
 	Parent = Window,
@@ -502,6 +770,22 @@ local TAB_ICONS = { "player", "visuals", "teleport", "misc", "settings" }
 local tabButtons  = {}
 local pages       = {}
 local pageScrolls = {}
+local pageItems   = { {}, {}, {}, {}, {} }
+
+local function applySearchFilter()
+	local q = string.lower((SearchBox.Text or ""):match("^%s*(.-)%s*$") or "")
+	for pIdx = 1, 5 do
+		for _, entry in ipairs(pageItems[pIdx]) do
+			if q == "" then
+				entry.node.Visible = true
+			else
+				entry.node.Visible = string.find(string.lower(entry.searchText), q, 1, true) ~= nil
+			end
+		end
+	end
+end
+
+bind(SearchBox:GetPropertyChangedSignal("Text"), applySearchFilter)
 
 for i = 1, 5 do
 	local btn = new("TextButton", {
@@ -554,7 +838,7 @@ for i = 1, 5 do
 	trackAccent(scroll, "ScrollBarImageColor3")
 	new("UIListLayout", { Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder, Parent = scroll })
 	new("UIPadding", {
-		PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14),
+		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 14),
 		PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14),
 		Parent = scroll,
 	})
@@ -633,7 +917,7 @@ do
 			local t = startPos + (lastMouse - startMouse)
 			dragTarget = Vector2.new(
 				math.clamp(t.X, -WinW * 0.5 + 10, Viewport.X - WinW * 0.5 - 10),
-				math.clamp(t.Y, 4, Viewport.Y - 30)
+				math.clamp(t.Y, 44, Viewport.Y - 30)
 			)
 		end
 		if dragTarget then
@@ -645,112 +929,6 @@ do
 			end
 			Holder.Position = UDim2.fromOffset(nx, ny)
 		end
-	end)
-end
-
--- // Notifications (iOS banners) -----------------------------------------
-local NotifHolder = new("Frame", {
-	BackgroundTransparency = 1,
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 14),
-	Size = UDim2.fromOffset(380, 600),
-	ZIndex = 50,
-	Parent = Gui,
-})
-
-local notifs = {}
-local function layoutNotifs(animate)
-	local y = 0
-	for _, n in ipairs(notifs) do
-		local target = UDim2.fromOffset(0, y)
-		if animate then
-			tween(n.frame, 0.4, { Position = target }, Enum.EasingStyle.Back)
-		else
-			n.frame.Position = target
-		end
-		y += n.frame.AbsoluteSize.Y + 8
-	end
-end
-
-local function Notify(title, message, duration)
-	if not notifyEnabled then return end
-	duration = duration or 3.5
-
-	local notif = new("CanvasGroup", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromOffset(0, -80),
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = Theme.Surface,
-		BorderSizePixel = 0,
-		GroupTransparency = 1,
-		ZIndex = 51,
-		Parent = NotifHolder,
-	})
-	new("UICorner", { CornerRadius = UDim.new(0, 18), Parent = notif })
-	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.9, Parent = notif })
-	new("UIPadding", {
-		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12),
-		PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
-		Parent = notif,
-	})
-
-	local icon = new("Frame", {
-		Size = UDim2.fromOffset(26, 26),
-		BackgroundColor3 = Accent,
-		BorderSizePixel = 0,
-		Parent = notif,
-	})
-	new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = icon })
-	trackAccent(icon, "BackgroundColor3")
-	new("TextLabel", {
-		BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-		Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.White,
-		Text = "✓", Parent = icon,
-	})
-
-	new("TextLabel", {
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(36, 1),
-		Size = UDim2.new(1, -36, 0, 15),
-		Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Theme.TextMain,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		Text = title, Parent = notif,
-	})
-	new("TextLabel", {
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(36, 17),
-		Size = UDim2.new(1, -36, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		TextWrapped = true,
-		Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.TextDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		Text = message, Parent = notif,
-	})
-
-	table.insert(notifs, { frame = notif })
-	tween(notif, 0.45, { GroupTransparency = 0 })
-	task.defer(function() layoutNotifs(true) end)
-
-	if #notifs > 4 then
-		local old = table.remove(notifs, 1)
-		tween(old.frame, 0.25, { GroupTransparency = 1, Position = UDim2.fromOffset(0, -60) })
-		task.delay(0.3, function() old.frame:Destroy() end)
-		task.defer(function() layoutNotifs(true) end)
-	end
-
-	task.delay(duration, function()
-		if not notif.Parent then return end
-		for idx, n in ipairs(notifs) do
-			if n.frame == notif then table.remove(notifs, idx) break end
-		end
-		tween(notif, 0.3, { GroupTransparency = 1, Position = UDim2.fromOffset(0, -40) })
-		task.delay(0.32, function()
-			if notif.Parent then notif:Destroy() end
-		end)
-		layoutNotifs(true)
 	end)
 end
 
@@ -792,30 +970,46 @@ local function Section(pageIndex, title)
 	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.93, Parent = card })
 	new("UIListLayout", { Padding = UDim.new(0, 0), SortOrder = Enum.SortOrder.LayoutOrder, Parent = card })
 	new("UIPadding", {
-		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12),
+		PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10),
 		PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16),
 		Parent = card,
 	})
 
-	local section = { count = 0, card = card }
-	local function separator()
+	local section = { count = 0, card = card, pageIndex = pageIndex, title = title }
+	local function separator(parent)
 		if section.count > 0 then
 			new("Frame", {
 				BackgroundColor3 = Theme.Stroke,
 				BackgroundTransparency = 0.94,
 				BorderSizePixel = 0,
 				Size = UDim2.new(1, 0, 0, 1),
-				Parent = card,
+				Parent = parent,
 			})
 		end
 	end
 
+	local function registerSearch(node, labelText)
+		table.insert(pageItems[pageIndex], {
+			node = node,
+			searchText = (section.title or "") .. " " .. (labelText or ""),
+		})
+	end
+
 	function section:Toggle(cfg)
-		separator()
+		local itemWrap = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = self.card,
+		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
 		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
 		local row = new("TextButton", {
 			Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-			Size = UDim2.new(1, 0, 0, 46), Parent = self.card,
+			Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0),
@@ -887,16 +1081,25 @@ local function Section(pageIndex, title)
 	end
 
 	function section:Slider(cfg)
-		separator()
-		self.count += 1
-		local row = new("Frame", {
+		local itemWrap = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 66),
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
 			Parent = self.card,
 		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
+		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
+		local row = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 62),
+			Parent = itemWrap,
+		})
 		new("TextLabel", {
-			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 8),
-			Size = UDim2.new(1, -76, 0, 14),
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 7),
+			Size = UDim2.new(1, -80, 0, 14),
 			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
@@ -904,7 +1107,7 @@ local function Section(pageIndex, title)
 		})
 		local valueLabel = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 8), Size = UDim2.new(0, 76, 0, 14),
+			Position = UDim2.new(1, 0, 0, 7), Size = UDim2.new(0, 80, 0, 14),
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Theme.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			Text = "", Parent = row,
@@ -912,8 +1115,8 @@ local function Section(pageIndex, title)
 
 		local hit = new("Frame", {
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(0, 32),
-			Size = UDim2.new(1, 0, 0, 32),
+			Position = UDim2.fromOffset(0, 29),
+			Size = UDim2.new(1, 0, 0, 30),
 			Parent = row,
 		})
 		local trackBg = new("Frame", {
@@ -938,7 +1141,7 @@ local function Section(pageIndex, title)
 		local knob = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.fromOffset(22, 22),
+			Size = UDim2.fromOffset(21, 21),
 			BackgroundColor3 = Theme.White,
 			BorderSizePixel = 0,
 			Parent = hit,
@@ -995,15 +1198,24 @@ local function Section(pageIndex, title)
 	end
 
 	function section:Button(cfg)
+		local itemWrap = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = self.card,
+		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
+		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
 		if cfg.style == "filled" or cfg.style == "danger" then
-			separator()
-			self.count += 1
 			local wrap = new("Frame", {
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, 0, 0, 56),
-				Parent = self.card,
+				Size = UDim2.new(1, 0, 0, 52),
+				Parent = itemWrap,
 			})
-			new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), Parent = wrap })
+			new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), Parent = wrap })
 			local btn = new("TextButton", {
 				Text = cfg.text,
 				Font = Enum.Font.GothamBold, TextSize = 13.5, TextColor3 = Theme.White,
@@ -1022,11 +1234,9 @@ local function Section(pageIndex, title)
 				if cfg.callback then cfg.callback() end
 			end)
 		else
-			separator()
-			self.count += 1
 			local row = new("TextButton", {
 				Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-				Size = UDim2.new(1, 0, 0, 46), Parent = self.card,
+				Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
 			})
 			new("TextLabel", {
 				BackgroundTransparency = 1,
@@ -1049,11 +1259,20 @@ local function Section(pageIndex, title)
 	end
 
 	function section:Dropdown(cfg)
-		separator()
+		local itemWrap = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = self.card,
+		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
 		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
 		local row = new("TextButton", {
 			Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-			Size = UDim2.new(1, 0, 0, 46), Parent = self.card,
+			Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
@@ -1082,7 +1301,7 @@ local function Section(pageIndex, title)
 			BackgroundTransparency = 1,
 			Size = UDim2.new(1, 0, 0, 0),
 			ClipsDescendants = true,
-			Parent = self.card,
+			Parent = itemWrap,
 		})
 		new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
 
@@ -1104,7 +1323,7 @@ local function Section(pageIndex, title)
 			for _, opt in ipairs(opts) do
 				local orow = new("TextButton", {
 					Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-					Size = UDim2.new(1, 0, 0, 34), Parent = list,
+					Size = UDim2.new(1, 0, 0, 32), Parent = list,
 				})
 				new("TextLabel", {
 					BackgroundTransparency = 1,
@@ -1130,7 +1349,7 @@ local function Section(pageIndex, title)
 				end)
 			end
 			tween(chev, 0.25, { Rotation = 180 })
-			local h = math.min(#opts * 36 + 6, 222)
+			local h = math.min(#opts * 34 + 6, 204)
 			tween(list, 0.35, { Size = UDim2.new(1, 0, 0, h) }, Enum.EasingStyle.Quart)
 		end
 
@@ -1149,11 +1368,20 @@ local function Section(pageIndex, title)
 	end
 
 	function section:Keybind(cfg)
-		separator()
+		local itemWrap = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = self.card,
+		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
 		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
 		local row = new("TextButton", {
 			Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-			Size = UDim2.new(1, 0, 0, 46), Parent = self.card,
+			Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
@@ -1222,12 +1450,21 @@ local function Section(pageIndex, title)
 	end
 
 	function section:AccentPicker(cfg)
-		separator()
+		local itemWrap = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = self.card,
+		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
 		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 50),
-			Parent = self.card,
+			Size = UDim2.new(1, 0, 0, 48),
+			Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
@@ -1283,12 +1520,21 @@ local function Section(pageIndex, title)
 	end
 
 	function section:Info(cfg)
-		separator()
+		local itemWrap = new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = self.card,
+		})
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = itemWrap })
+		separator(itemWrap)
 		self.count += 1
+		registerSearch(itemWrap, cfg.text)
+
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 42),
-			Parent = self.card,
+			Size = UDim2.new(1, 0, 0, 40),
+			Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
@@ -1311,11 +1557,11 @@ local function Section(pageIndex, title)
 	end
 
 	function section:Footer(text)
-		separator()
+		separator(self.card)
 		self.count += 1
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 28),
+			Size = UDim2.new(1, 0, 0, 26),
 			Parent = self.card,
 		})
 		new("TextLabel", {
@@ -1341,20 +1587,31 @@ do
 end
 
 local State = {
-	WalkSpeed  = BaseWS,
-	JumpPower  = BaseJP,
-	InfJump    = false,
-	Noclip     = false,
-	Fly        = false,
-	FlySpeed   = 60,
-	SpinBot    = false,
-	SpinSpeed  = 18,
-	ClickTP    = false,
-	AntiAFK    = true,
-	NoFog      = false,
-	Xray       = false,
-	Freecam    = false,
-	FreecamSpd = 45,
+	WalkSpeed   = BaseWS,
+	JumpPower   = BaseJP,
+	InfJump     = false,
+	Noclip      = false,
+	Fly         = false,
+	FlySpeed    = 60,
+	SpinBot     = false,
+	SpinSpeed   = 18,
+	FloatMode   = false,
+	ClickTP     = false,
+	AntiAFK     = true,
+	NoFog       = false,
+	Xray        = false,
+	Freecam     = false,
+	FreecamSpd  = 45,
+	Aimbot = {
+		Enabled     = false,
+		HoldRMB     = true,
+		Smoothness  = 0.18,
+		FOV         = 130,
+		ShowFOV     = true,
+		TargetPart  = "Head",
+		TeamCheck   = true,
+		WallCheck   = true,
+	},
 	ESP = {
 		Master    = false,
 		Names     = true,
@@ -1422,7 +1679,8 @@ bind(UserInputService.JumpRequest, function()
 	end
 end)
 
--- // Noclip & SpinBot ----------------------------------------------------
+-- // Noclip, Float & SpinBot ---------------------------------------------
+local floatPart = nil
 bind(RunService.Stepped, function()
 	if State.Noclip then
 		local char = getChar()
@@ -1431,6 +1689,26 @@ bind(RunService.Stepped, function()
 				if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
 			end
 		end
+	end
+	local hrp = getHRP()
+	if State.FloatMode and hrp and not State.Noclip and not State.Fly then
+		if not floatPart or not floatPart.Parent then
+			floatPart = new("Part", {
+				Name = "GCG_FloatPart",
+				Size = Vector3.new(5, 0.5, 5),
+				Anchored = true,
+				Transparency = 0.85,
+				CanCollide = true,
+				Material = Enum.Material.Neon,
+				Color = Accent,
+				Parent = Gui,
+			})
+			trackAccent(floatPart, "Color")
+		end
+		floatPart.CFrame = CFrame.new(hrp.Position - Vector3.new(0, 3.35, 0))
+	elseif floatPart then
+		floatPart:Destroy()
+		floatPart = nil
 	end
 end)
 
@@ -1469,6 +1747,90 @@ bind(RunService.Heartbeat, function()
 	elseif flyBV then
 		flyBV:Destroy()
 		flyBV = nil
+	end
+end)
+
+-- // Aimbot --------------------------------------------------------------
+local HasDrawing = pcall(function()
+	local l = Drawing.new("Line")
+	l:Remove()
+end)
+
+local fovCircle = nil
+if HasDrawing then
+	pcall(function()
+		fovCircle = Drawing.new("Circle")
+		fovCircle.Thickness = 1.5
+		fovCircle.NumSides = 64
+		fovCircle.Filled = false
+		fovCircle.Transparency = 0.75
+		fovCircle.Color = Accent
+		fovCircle.Visible = false
+		trackAccent(fovCircle, "Color")
+	end)
+end
+
+local function isVisible(originPos, targetPart, targetChar)
+	if not State.Aimbot.WallCheck then return true end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = {}
+	if getChar() then table.insert(ignore, getChar()) end
+	params.FilterDescendantsInstances = ignore
+	local dir = targetPart.Position - originPos
+	local res = workspace:Raycast(originPos, dir, params)
+	if not res then return true end
+	return targetChar and res.Instance:IsDescendantOf(targetChar)
+end
+
+local function getAimTarget()
+	local vp = Camera.ViewportSize
+	local center = Vector2.new(vp.X * 0.5, vp.Y * 0.5)
+	local bestPart, bestDist = nil, State.Aimbot.FOV
+	local camOrigin = Camera.CFrame.Position
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local sameTeam = State.Aimbot.TeamCheck and plr.Team ~= nil and LocalPlayer.Team ~= nil and plr.Team == LocalPlayer.Team
+			local char = plr.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local part = char and (char:FindFirstChild(State.Aimbot.TargetPart) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart"))
+			if not sameTeam and hum and hum.Health > 0 and part then
+				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+				if onScreen and screenPos.Z > 0 then
+					local d2d = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+					if d2d <= bestDist and isVisible(camOrigin, part, char) then
+						bestDist = d2d
+						bestPart = part
+					end
+				end
+			end
+		end
+	end
+	return bestPart
+end
+
+bind(RunService.RenderStepped, function()
+	local vp = Camera.ViewportSize
+	local center = Vector2.new(vp.X * 0.5, vp.Y * 0.5)
+	if fovCircle then
+		fovCircle.Position = center
+		fovCircle.Radius = State.Aimbot.FOV
+		fovCircle.Visible = State.Aimbot.Enabled and State.Aimbot.ShowFOV
+	end
+
+	local activeAim = State.Aimbot.Enabled and (not State.Aimbot.HoldRMB or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
+	if activeAim and not State.Freecam then
+		local target = getAimTarget()
+		if target then
+			local currentCF = Camera.CFrame
+			local desiredCF = CFrame.lookAt(currentCF.Position, target.Position)
+			local alpha = math.clamp(State.Aimbot.Smoothness, 0.03, 1)
+			Camera.CFrame = currentCF:Lerp(desiredCF, alpha)
+			if islandEnabled and not islandExpanded and islandPulseToken == 0 then
+				IslandSub.Text = "Aim: " .. tostring(target.Parent and target.Parent.Name or "Target")
+			end
+		end
 	end
 end)
 
@@ -1666,11 +2028,6 @@ bind(LocalPlayer.Idled, function()
 end)
 
 -- // ESP -----------------------------------------------------------------
-local HasDrawing = pcall(function()
-	local l = Drawing.new("Line")
-	l:Remove()
-end)
-
 local espFolder = new("Folder", { Name = "ESP", Parent = Gui })
 local espCache = {}
 
@@ -1918,8 +2275,8 @@ secMove:Button({
 
 local secAbil = Section(1, "Abilities")
 secAbil:Toggle({ text = "Infinite Jump", default = false, callback = function(v) State.InfJump = v end })
-secAbil:Toggle({ text = "Noclip", default = false, callback = function(v) State.Noclip = v end })
-secAbil:Toggle({
+local tNoclip = secAbil:Toggle({ text = "Noclip", default = false, callback = function(v) State.Noclip = v end })
+local tFly = secAbil:Toggle({
 	text = "Fly",
 	default = false,
 	callback = function(v)
@@ -1928,6 +2285,7 @@ secAbil:Toggle({
 	end,
 })
 secAbil:Slider({ text = "Fly Speed", min = 10, max = 220, default = 60, callback = function(v) State.FlySpeed = v end })
+secAbil:Toggle({ text = "Float Platform", default = false, callback = function(v) State.FloatMode = v end })
 secAbil:Toggle({ text = "SpinBot", default = false, callback = function(v) State.SpinBot = v end })
 secAbil:Slider({ text = "Spin Speed", min = 1, max = 60, default = 18, callback = function(v) State.SpinSpeed = v end })
 
@@ -1950,7 +2308,33 @@ secChar:Button({
 	end,
 })
 
--- 2. VISUALS
+-- 2. VISUALS & AIM
+local secAim = Section(2, "Aimbot")
+local tAim = secAim:Toggle({
+	text = "Aimbot Enabled",
+	default = false,
+	callback = function(v)
+		State.Aimbot.Enabled = v
+		Notify("Aimbot", v and "Aimbot enabled" or "Aimbot disabled")
+	end,
+})
+secAim:Toggle({ text = "Hold Right-Click Only", default = true, callback = function(v) State.Aimbot.HoldRMB = v end })
+secAim:Toggle({ text = "Show FOV Circle", default = true, callback = function(v) State.Aimbot.ShowFOV = v end })
+secAim:Toggle({ text = "Aim Team Check", default = true, callback = function(v) State.Aimbot.TeamCheck = v end })
+secAim:Toggle({ text = "Aim Wall Check", default = true, callback = function(v) State.Aimbot.WallCheck = v end })
+secAim:Dropdown({
+	text = "Target Part",
+	default = "Head",
+	options = { "Head", "HumanoidRootPart" },
+	callback = function(v) State.Aimbot.TargetPart = v end,
+})
+secAim:Slider({ text = "Aim FOV", min = 30, max = 450, default = 130, suffix = "px", callback = function(v) State.Aimbot.FOV = v end })
+secAim:Slider({
+	text = "Aim Smoothness",
+	min = 0.05, max = 1, default = 0.18, step = 0.01,
+	callback = function(v) State.Aimbot.Smoothness = v end,
+})
+
 local secESP = Section(2, "Player ESP")
 secESP:Toggle({
 	text = "Player Highlights",
@@ -1975,7 +2359,7 @@ secESP:Toggle({
 		State.ESP.Tracers = v
 	end,
 })
-secESP:Toggle({ text = "Team Check", default = true, callback = function(v) State.ESP.TeamCheck = v end })
+secESP:Toggle({ text = "ESP Team Check", default = true, callback = function(v) State.ESP.TeamCheck = v end })
 
 local secWorld = Section(2, "World & Lighting")
 secWorld:Toggle({ text = "Fullbright", default = false, callback = function(v) setFullbright(v) end })
@@ -2122,8 +2506,17 @@ local infoPlayers = secStatus:Info({ text = "Players", value = tostring(#Players
 local infoPos = secStatus:Info({ text = "Position", value = "0, 0, 0" })
 
 -- 5. SETTINGS
-local secTheme = Section(5, "Appearance")
+local secTheme = Section(5, "Appearance & Island")
 secTheme:AccentPicker({ text = "Accent Color" })
+secTheme:Toggle({
+	text = "Dynamic Island",
+	default = true,
+	callback = function(v)
+		islandEnabled = v
+		IslandHolder.Visible = v
+		if not v then setIslandExpanded(false) end
+	end,
+})
 secTheme:Toggle({
 	text = "Notifications",
 	default = true,
@@ -2131,7 +2524,7 @@ secTheme:Toggle({
 })
 secTheme:Button({
 	text = "Test Notification",
-	callback = function() Notify("Gigachad Garage", "Clean UI & active features ready.") end,
+	callback = function() Notify("Gigachad Garage", "Dynamic Island & modules active.") end,
 })
 
 local secKeys = Section(5, "Keybinds")
@@ -2146,7 +2539,7 @@ secKeys:Keybind({
 })
 
 local secAbout = Section(5, "Gigachad Garage")
-secAbout:Info({ text = "Version", value = "1.3.0" })
+secAbout:Info({ text = "Version", value = "1.4.0" })
 secAbout:Info({ text = "Executor", value = ExecutorName })
 secAbout:Info({ text = "Game", value = "Universal" })
 secAbout:Footer("STAY SIGMA.")
@@ -2177,6 +2570,11 @@ local function setUIVisible(v)
 	end
 end
 
+makeIslandChip("UI", function() setUIVisible(not uiVisible) end)
+makeIslandChip("Noclip", function() tNoclip.Set(not tNoclip.Get()) end)
+makeIslandChip("Fly", function() tFly.Set(not tFly.Get()) end)
+makeIslandChip("Aim", function() tAim.Set(not tAim.Get()) end)
+
 bind(UserInputService.InputBegan, function(io, gp)
 	if gp then return end
 	if KeybindListening > 0 then return end
@@ -2200,6 +2598,9 @@ task.spawn(function()
 	while Gui.Parent do
 		local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000 + 0.5)
 		FpsLabel.Text = string.format("%d FPS  •  %d ms", frames, ping)
+		if islandEnabled and not islandExpanded and islandPulseToken == 0 then
+			IslandSub.Text = string.format("%d FPS • %d ms", frames, ping)
+		end
 		frames = 0
 		infoPlayers.Set(tostring(#Players:GetPlayers()))
 		local hrp = getHRP()
@@ -2223,6 +2624,8 @@ local function Unload()
 	State.ClickTP = false
 	State.AntiAFK = false
 	State.SpinBot = false
+	State.FloatMode = false
+	State.Aimbot.Enabled = false
 	if State.Freecam then setFreecam(false) end
 
 	pcall(function() setFullbright(false) end)
@@ -2231,6 +2634,8 @@ local function Unload()
 	pcall(function() setFPSBoost(false) end)
 	pcall(function() espClearAll() end)
 	if flyBV then flyBV:Destroy() flyBV = nil end
+	if floatPart then floatPart:Destroy() floatPart = nil end
+	if fovCircle then pcall(function() fovCircle:Remove() end) end
 
 	pcall(function() workspace.Gravity = OriginalGravity end)
 	pcall(function() Camera.FieldOfView = OriginalFOV end)
@@ -2255,11 +2660,13 @@ secAbout:Button({
 	end,
 })
 
-getgenv().GIGACHAD_GARAGE = {
-	Version = "1.3.0",
-	Unload = Unload,
-	Notify = Notify,
-}
+if getgenv then
+	getgenv().GIGACHAD_GARAGE = {
+		Version = "1.4.0",
+		Unload = Unload,
+		Notify = Notify,
+	}
+end
 
 Boot.Step("Finishing up", 0.95)
 
@@ -2368,7 +2775,7 @@ task.spawn(function()
 
 	task.delay(0.42, function() Splash:Destroy() end)
 	task.delay(0.65, function()
-		Notify("Gigachad Garage", "v1.3.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
+		Notify("Gigachad Garage", "v1.4.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
 	end)
 end)
 
@@ -2380,7 +2787,7 @@ end, function(e)
 end)
 
 if ok then
-	print("[Gigachad Garage] v1.3.0 loaded successfully on " .. tostring(ExecutorName))
+	print("[Gigachad Garage] v1.4.0 loaded successfully on " .. tostring(ExecutorName))
 	task.defer(Boot.Finish)
 else
 	Boot.Error(err)
