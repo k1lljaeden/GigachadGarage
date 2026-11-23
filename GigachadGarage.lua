@@ -1,6 +1,6 @@
 --=====================================================================--
---  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.5.0
---  Spacious UI + Smooth Motion + Radar + Spectate + Aimbot + Island.
+--  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.6.0
+--  Taller Spacious UI + Fly Modes + Sprint + Crosshair + ESP Boxes.
 --
 --  Toggle UI : Right Shift
 --  Executor  : Solara (works on most executors too)
@@ -251,6 +251,7 @@ local LastCaptureTick = 0
 local notifyEnabled = true
 local islandEnabled = true
 local radarEnabled = false
+local crosshairEnabled = false
 
 Boot.Step("Building interface", 0.25)
 
@@ -278,6 +279,27 @@ end
 bind(Camera:GetPropertyChangedSignal("ViewportSize"), function()
 	Viewport = Camera.ViewportSize
 end)
+
+-- // Center Crosshair ----------------------------------------------------
+local CrosshairHolder = new("Frame", {
+	Visible = false,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(24, 24),
+	BackgroundTransparency = 1,
+	ZIndex = 45,
+	Parent = Gui,
+})
+local chTop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(2, 6), BackgroundColor3 = Accent, BorderSizePixel = 0, Parent = CrosshairHolder })
+local chBot = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.fromOffset(2, 6), BackgroundColor3 = Accent, BorderSizePixel = 0, Parent = CrosshairHolder })
+local chLeft = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.fromOffset(6, 2), BackgroundColor3 = Accent, BorderSizePixel = 0, Parent = CrosshairHolder })
+local chRight = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(6, 2), BackgroundColor3 = Accent, BorderSizePixel = 0, Parent = CrosshairHolder })
+local chCenter = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(3, 3), BackgroundColor3 = Theme.White, BorderSizePixel = 0, Parent = CrosshairHolder })
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = chCenter })
+for _, bar in ipairs({ chTop, chBot, chLeft, chRight }) do
+	new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = bar })
+	trackAccent(bar, "BackgroundColor3")
+end
 
 -- // iPhone Dynamic Island -----------------------------------------------
 local IslandHolder = new("Frame", {
@@ -425,7 +447,7 @@ local RadarFrame = new("Frame", {
 new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = RadarFrame })
 new("UIStroke", { Color = Theme.Stroke, Transparency = 0.88, Thickness = 1.2, Parent = RadarFrame })
 
-local RadarCrossH = new("Frame", {
+new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
 	Size = UDim2.new(1, -18, 0, 1),
@@ -434,7 +456,7 @@ local RadarCrossH = new("Frame", {
 	BorderSizePixel = 0,
 	Parent = RadarFrame,
 })
-local RadarCrossV = new("Frame", {
+new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
 	Size = UDim2.new(0, 1, 1, -18),
@@ -462,7 +484,7 @@ local RadarDotsFolder = new("Frame", {
 	Parent = RadarFrame,
 })
 
-local RadarTitle = new("TextLabel", {
+new("TextLabel", {
 	BackgroundTransparency = 1,
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -8),
@@ -583,20 +605,20 @@ local function Notify(title, message, duration)
 	end)
 end
 
--- // Window shell (larger & more comfortable) ----------------------------
-local WINDOW_W, WINDOW_H = 680, 460
+-- // Window shell (taller & more spacious vertically) ------------------
+local WINDOW_W, WINDOW_H = 680, 560
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local UIScaleValue = 1
 if IsMobile then
 	UIScaleValue = math.min((Viewport.X - 16) / WINDOW_W, (Viewport.Y - 16) / WINDOW_H, 1)
-	if UIScaleValue < 0.55 then UIScaleValue = 0.55 end
+	if UIScaleValue < 0.5 then UIScaleValue = 0.5 end
 end
 local WinW, WinH = WINDOW_W * UIScaleValue, WINDOW_H * UIScaleValue
 
 local Holder = new("Frame", {
 	BackgroundTransparency = 1,
 	Size = UDim2.fromOffset(WINDOW_W, WINDOW_H),
-	Position = UDim2.fromOffset((Viewport.X - WinW) / 2, math.max((Viewport.Y - WinH) / 2, 56)),
+	Position = UDim2.fromOffset((Viewport.X - WinW) / 2, math.max((Viewport.Y - WinH) / 2, 52)),
 	Parent = Gui,
 })
 new("UIScale", { Scale = UIScaleValue, Parent = Holder })
@@ -1686,10 +1708,13 @@ end
 local State = {
 	WalkSpeed   = BaseWS,
 	JumpPower   = BaseJP,
+	SprintBoost = false,
+	SprintMult  = 1.45,
 	InfJump     = false,
 	BunnyHop    = false,
 	Noclip      = false,
 	Fly         = false,
+	FlyMode     = "Velocity",
 	FlySpeed    = 60,
 	SpinBot     = false,
 	SpinSpeed   = 18,
@@ -1705,6 +1730,7 @@ local State = {
 	Aimbot = {
 		Enabled     = false,
 		HoldRMB     = true,
+		TargetLock  = true,
 		Smoothness  = 0.18,
 		FOV         = 130,
 		ShowFOV     = true,
@@ -1714,6 +1740,7 @@ local State = {
 	},
 	ESP = {
 		Master    = false,
+		Boxes     = false,
 		Names     = true,
 		Distance  = false,
 		Health    = true,
@@ -1734,7 +1761,7 @@ local function getHum()
 	return c and c:FindFirstChildOfClass("Humanoid")
 end
 
--- // Movement ------------------------------------------------------------
+-- // Movement & Shift Sprint ---------------------------------------------
 local function setWalkSpeed(v)
 	State.WalkSpeed = v
 	local hum = getHum()
@@ -1757,14 +1784,23 @@ bind(LocalPlayer.CharacterAdded, function()
 	if State.JumpPower ~= BaseJP then setJumpPower(State.JumpPower) end
 end)
 
+bind(RunService.Heartbeat, function()
+	if State.Freecam then return end
+	local hum = getHum()
+	if hum then
+		local isSprinting = State.SprintBoost and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and hum.MoveDirection.Magnitude > 0.1
+		local targetWS = isSprinting and (State.WalkSpeed * State.SprintMult) or State.WalkSpeed
+		if math.abs(hum.WalkSpeed - targetWS) > 0.1 then
+			hum.WalkSpeed = targetWS
+		end
+	end
+end)
+
 task.spawn(function()
 	while Gui.Parent do
 		task.wait(0.75)
 		local hum = getHum()
 		if hum then
-			if State.WalkSpeed ~= BaseWS and hum.WalkSpeed ~= State.WalkSpeed then
-				hum.WalkSpeed = State.WalkSpeed
-			end
 			if State.JumpPower ~= BaseJP and math.floor(hum.JumpPower + 0.5) ~= State.JumpPower then
 				pcall(function() hum.JumpPower = State.JumpPower end)
 			end
@@ -1854,19 +1890,11 @@ bind(RunService.Heartbeat, function(dt)
 	end
 end)
 
--- // Fly -----------------------------------------------------------------
+-- // Fly (Velocity & CFrame) ---------------------------------------------
 local flyBV = nil
-bind(RunService.Heartbeat, function()
+bind(RunService.Heartbeat, function(dt)
 	local hrp = getHRP()
 	if State.Fly and hrp then
-		if not flyBV or flyBV.Parent ~= hrp then
-			if flyBV then flyBV:Destroy() end
-			flyBV = new("BodyVelocity", {
-				MaxForce = Vector3.new(1e9, 1e9, 1e9),
-				Velocity = Vector3.new(0, 0, 0),
-				Parent = hrp,
-			})
-		end
 		local camCF = Camera.CFrame
 		local dir = Vector3.new(0, 0, 0)
 		if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += camCF.LookVector end
@@ -1875,8 +1903,23 @@ bind(RunService.Heartbeat, function()
 		if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += camCF.RightVector end
 		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0, 1, 0) end
 		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.new(0, 1, 0) end
-		if dir.Magnitude > 0 then dir = dir.Unit * State.FlySpeed end
-		flyBV.Velocity = dir
+		local vel = (dir.Magnitude > 0) and (dir.Unit * State.FlySpeed) or Vector3.zero
+
+		if State.FlyMode == "CFrame" then
+			if flyBV then flyBV:Destroy() flyBV = nil end
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.CFrame = hrp.CFrame + vel * dt
+		else
+			if not flyBV or flyBV.Parent ~= hrp then
+				if flyBV then flyBV:Destroy() end
+				flyBV = new("BodyVelocity", {
+					MaxForce = Vector3.new(1e9, 1e9, 1e9),
+					Velocity = Vector3.new(0, 0, 0),
+					Parent = hrp,
+				})
+			end
+			flyBV.Velocity = vel
+		end
 	elseif flyBV then
 		flyBV:Destroy()
 		flyBV = nil
@@ -1903,6 +1946,8 @@ if HasDrawing then
 	end)
 end
 
+local lockedAimPart = nil
+
 local function isVisible(originPos, targetPart, targetChar)
 	if not State.Aimbot.WallCheck then return true end
 	local params = RaycastParams.new()
@@ -1916,7 +1961,23 @@ local function isVisible(originPos, targetPart, targetChar)
 	return targetChar and res.Instance:IsDescendantOf(targetChar)
 end
 
+local function isValidAimPart(part)
+	if not part or not part.Parent then return false end
+	local hum = part.Parent:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then return false end
+	local plr = Players:GetPlayerFromCharacter(part.Parent)
+	if plr and State.Aimbot.TeamCheck and plr.Team ~= nil and LocalPlayer.Team ~= nil and plr.Team == LocalPlayer.Team then
+		return false
+	end
+	return isVisible(Camera.CFrame.Position, part, part.Parent)
+end
+
 local function getAimTarget()
+	if State.Aimbot.TargetLock and lockedAimPart and isValidAimPart(lockedAimPart) then
+		return lockedAimPart
+	end
+	lockedAimPart = nil
+
 	local vp = Camera.ViewportSize
 	local center = Vector2.new(vp.X * 0.5, vp.Y * 0.5)
 	local bestPart, bestDist = nil, State.Aimbot.FOV
@@ -1939,6 +2000,9 @@ local function getAimTarget()
 				end
 			end
 		end
+	end
+	if State.Aimbot.TargetLock and bestPart then
+		lockedAimPart = bestPart
 	end
 	return bestPart
 end
@@ -2012,8 +2076,10 @@ bind(RunService.RenderStepped, function()
 		fovCircle.Visible = State.Aimbot.Enabled and State.Aimbot.ShowFOV
 	end
 
-	local activeAim = State.Aimbot.Enabled and (not State.Aimbot.HoldRMB or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
-	if activeAim and not State.Freecam and not State.Spectating then
+	local holdingAim = not State.Aimbot.HoldRMB or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+	local activeAim = State.Aimbot.Enabled and holdingAim and not State.Freecam and not State.Spectating
+	if not holdingAim then lockedAimPart = nil end
+	if activeAim then
 		local target = getAimTarget()
 		if target then
 			local currentCF = Camera.CFrame
@@ -2245,7 +2311,7 @@ bind(LocalPlayer.Idled, function()
 	end
 end)
 
--- // ESP -----------------------------------------------------------------
+-- // ESP (Highlights + Boxes + Name/HP/Dist + Tracers) -----------------
 local espFolder = new("Folder", { Name = "ESP", Parent = Gui })
 local espCache = {}
 
@@ -2255,6 +2321,7 @@ local function espRemove(plr)
 		if d.hl then d.hl:Destroy() end
 		if d.bb then d.bb:Destroy() end
 		if d.line then pcall(function() d.line:Remove() end) end
+		if d.box then pcall(function() d.box:Remove() end) end
 		espCache[plr] = nil
 	end
 end
@@ -2305,6 +2372,14 @@ local function espAdd(plr)
 			d.line.Color = Accent
 			d.line.Visible = false
 			trackAccent(d.line, "Color")
+
+			d.box = Drawing.new("Square")
+			d.box.Thickness = 1.4
+			d.box.Filled = false
+			d.box.Transparency = 0.85
+			d.box.Color = Accent
+			d.box.Visible = false
+			trackAccent(d.box, "Color")
 		end)
 	end
 
@@ -2334,6 +2409,7 @@ bind(RunService.RenderStepped, function()
 	for plr, d in pairs(espCache) do
 		local char = plr.Character
 		local head = char and (char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart"))
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		local valid = (char and head and hum and hum.Health > 0) and true or false
 		local sameTeam = (State.ESP.TeamCheck and plr.Team ~= nil and LocalPlayer.Team ~= nil
@@ -2363,6 +2439,24 @@ bind(RunService.RenderStepped, function()
 				d.metaL.Text = table.concat(parts, " • ")
 			else
 				d.metaL.Text = ""
+			end
+		end
+
+		if d.box then
+			if masterOn and State.ESP.Boxes and hrp then
+				local topPos, topVis = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 2.8, 0))
+				local botPos, botVis = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3.2, 0))
+				if topVis and botVis and topPos.Z > 0 then
+					local h = math.max(math.abs(botPos.Y - topPos.Y), 12)
+					local w = h * 0.58
+					d.box.Size = Vector2.new(w, h)
+					d.box.Position = Vector2.new(topPos.X - w * 0.5, topPos.Y)
+					d.box.Visible = true
+				else
+					d.box.Visible = false
+				end
+			else
+				d.box.Visible = false
 			end
 		end
 
@@ -2481,6 +2575,8 @@ local sJump = secMove:Slider({ text = "Jump Power", min = 0, max = 300, default 
 local sGrav = secMove:Slider({ text = "Gravity", min = 0, max = 500, default = workspace.Gravity, step = 0.1, callback = function(v)
 	workspace.Gravity = v
 end })
+secMove:Toggle({ text = "Shift Sprint Boost", default = false, callback = function(v) State.SprintBoost = v end })
+secMove:Slider({ text = "Sprint Multiplier", min = 1.1, max = 3.0, default = 1.45, step = 0.05, suffix = "x", callback = function(v) State.SprintMult = v end })
 secMove:Button({
 	text = "Reset Movement & Gravity",
 	callback = function()
@@ -2500,8 +2596,14 @@ local tFly = secAbil:Toggle({
 	default = false,
 	callback = function(v)
 		State.Fly = v
-		Notify("Fly", v and "Enabled — WASD, Space, Ctrl" or "Disabled")
+		Notify("Fly", v and ("Enabled (" .. State.FlyMode .. ") — WASD, Space, Ctrl") or "Disabled")
 	end,
+})
+secAbil:Dropdown({
+	text = "Fly Mode",
+	default = "Velocity",
+	options = { "Velocity", "CFrame" },
+	callback = function(v) State.FlyMode = v end,
 })
 secAbil:Slider({ text = "Fly Speed", min = 10, max = 220, default = 60, callback = function(v) State.FlySpeed = v end })
 secAbil:Toggle({ text = "Float Platform", default = false, callback = function(v) State.FloatMode = v end })
@@ -2535,10 +2637,12 @@ local tAim = secAim:Toggle({
 	default = false,
 	callback = function(v)
 		State.Aimbot.Enabled = v
+		if not v then lockedAimPart = nil end
 		Notify("Aimbot", v and "Aimbot enabled" or "Aimbot disabled")
 	end,
 })
 secAim:Toggle({ text = "Hold Right-Click Only", default = true, callback = function(v) State.Aimbot.HoldRMB = v end })
+secAim:Toggle({ text = "Target Lock", default = true, callback = function(v) State.Aimbot.TargetLock = v if not v then lockedAimPart = nil end end })
 secAim:Toggle({ text = "Show FOV Circle", default = true, callback = function(v) State.Aimbot.ShowFOV = v end })
 secAim:Toggle({ text = "Aim Team Check", default = true, callback = function(v) State.Aimbot.TeamCheck = v end })
 secAim:Toggle({ text = "Aim Wall Check", default = true, callback = function(v) State.Aimbot.WallCheck = v end })
@@ -2546,7 +2650,7 @@ secAim:Dropdown({
 	text = "Target Part",
 	default = "Head",
 	options = { "Head", "HumanoidRootPart" },
-	callback = function(v) State.Aimbot.TargetPart = v end,
+	callback = function(v) State.Aimbot.TargetPart = v lockedAimPart = nil end,
 })
 secAim:Slider({ text = "Aim FOV", min = 30, max = 450, default = 130, suffix = "px", callback = function(v) State.Aimbot.FOV = v end })
 secAim:Slider({
@@ -2555,7 +2659,7 @@ secAim:Slider({
 	callback = function(v) State.Aimbot.Smoothness = v end,
 })
 
-local secESP = Section(2, "Player ESP & Radar")
+local secESP = Section(2, "Player ESP & HUD")
 secESP:Toggle({
 	text = "Player Highlights",
 	default = false,
@@ -2563,6 +2667,25 @@ secESP:Toggle({
 		State.ESP.Master = v
 		if v then espRefresh() else espClearAll() end
 		Notify("Visuals", v and "Player ESP enabled" or "Player ESP disabled")
+	end,
+})
+secESP:Toggle({
+	text = "2D ESP Boxes",
+	default = false,
+	callback = function(v)
+		if v and not HasDrawing then
+			Notify("Visuals", "Drawing API is not supported by this executor")
+			return
+		end
+		State.ESP.Boxes = v
+	end,
+})
+secESP:Toggle({
+	text = "Center Crosshair",
+	default = false,
+	callback = function(v)
+		crosshairEnabled = v
+		CrosshairHolder.Visible = v
 	end,
 })
 secESP:Toggle({
@@ -2719,6 +2842,28 @@ secCam:Slider({ text = "Freecam Speed", min = 10, max = 150, default = 45, callb
 local secUtil = Section(4, "Utility & Server")
 secUtil:Toggle({ text = "Anti-AFK", default = true, callback = function(v) State.AntiAFK = v end })
 secUtil:Button({
+	text = "Reset All Modifiers",
+	callback = function()
+		State.Noclip = false
+		State.Fly = false
+		State.InfJump = false
+		State.BunnyHop = false
+		State.SprintBoost = false
+		State.SpinBot = false
+		State.FloatMode = false
+		State.WalkWater = false
+		State.Aimbot.Enabled = false
+		lockedAimPart = nil
+		if State.Spectating then setSpectate(false) end
+		if State.Freecam then setFreecam(false) end
+		sWalk.Set(BaseWS)
+		sJump.Set(BaseJP)
+		sGrav.Set(OriginalGravity)
+		sFov.Set(OriginalFOV)
+		Notify("Utility", "All character & camera modifiers reset")
+	end,
+})
+secUtil:Button({
 	text = "Copy Position (XYZ)",
 	callback = function()
 		local hrp = getHRP()
@@ -2769,7 +2914,7 @@ secTheme:Toggle({
 })
 secTheme:Button({
 	text = "Test Notification",
-	callback = function() Notify("Gigachad Garage", "v1.5.0 spacious UI & island ready.") end,
+	callback = function() Notify("Gigachad Garage", "v1.6.0 tall UI & new modules active.") end,
 })
 
 local secKeys = Section(5, "Keybinds")
@@ -2784,7 +2929,7 @@ secKeys:Keybind({
 })
 
 local secAbout = Section(5, "Gigachad Garage")
-secAbout:Info({ text = "Version", value = "1.5.0" })
+secAbout:Info({ text = "Version", value = "1.6.0" })
 secAbout:Info({ text = "Executor", value = ExecutorName })
 secAbout:Info({ text = "Game", value = "Universal" })
 secAbout:Footer("STAY SIGMA.")
@@ -2867,13 +3012,16 @@ local function Unload()
 	State.Fly = false
 	State.InfJump = false
 	State.BunnyHop = false
+	State.SprintBoost = false
 	State.ClickTP = false
 	State.AntiAFK = false
 	State.SpinBot = false
 	State.FloatMode = false
 	State.WalkWater = false
 	State.Aimbot.Enabled = false
+	lockedAimPart = nil
 	radarEnabled = false
+	crosshairEnabled = false
 	if State.Spectating then setSpectate(false) end
 	if State.Freecam then setFreecam(false) end
 
@@ -2912,7 +3060,7 @@ secAbout:Button({
 
 if getgenv then
 	getgenv().GIGACHAD_GARAGE = {
-		Version = "1.5.0",
+		Version = "1.6.0",
 		Unload = Unload,
 		Notify = Notify,
 	}
@@ -3025,7 +3173,7 @@ task.spawn(function()
 
 	task.delay(0.44, function() Splash:Destroy() end)
 	task.delay(0.65, function()
-		Notify("Gigachad Garage", "v1.5.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
+		Notify("Gigachad Garage", "v1.6.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
 	end)
 end)
 
@@ -3037,7 +3185,7 @@ end, function(e)
 end)
 
 if ok then
-	print("[Gigachad Garage] v1.5.0 loaded successfully on " .. tostring(ExecutorName))
+	print("[Gigachad Garage] v1.6.0 loaded successfully on " .. tostring(ExecutorName))
 	task.defer(Boot.Finish)
 else
 	Boot.Error(err)
