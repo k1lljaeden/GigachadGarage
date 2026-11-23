@@ -1,5 +1,5 @@
 --=====================================================================--
---  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.1.0 (Fixed)
+--  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.3.0
 --  iPhone-grade UI. Sigma-grade power. Works in every game.
 --
 --  Toggle UI : Right Shift
@@ -99,7 +99,7 @@ local Boot = {} do
 				TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 				{ Size = UDim2.fromScale(alpha, 1) }):Play()
 		end)
-		task.wait(0.15)
+		task.wait(0.12)
 	end
 
 	function Boot.Finish()
@@ -193,15 +193,16 @@ end
 
 -- // Theme ---------------------------------------------------------------
 local Theme = {
-	Window     = Color3.fromRGB(18, 18, 21),
-	Surface    = Color3.fromRGB(28, 28, 31),
-	SurfaceAlt = Color3.fromRGB(44, 44, 48),
-	TabBar     = Color3.fromRGB(13, 13, 15),
+	Window     = Color3.fromRGB(16, 16, 20),
+	Surface    = Color3.fromRGB(26, 26, 31),
+	SurfaceAlt = Color3.fromRGB(42, 42, 49),
+	TabBar     = Color3.fromRGB(12, 12, 15),
 	Stroke     = Color3.fromRGB(255, 255, 255),
-	TextMain   = Color3.fromRGB(238, 238, 242),
-	TextDim    = Color3.fromRGB(152, 152, 160),
-	TextFaint  = Color3.fromRGB(104, 104, 112),
+	TextMain   = Color3.fromRGB(240, 240, 246),
+	TextDim    = Color3.fromRGB(154, 154, 164),
+	TextFaint  = Color3.fromRGB(104, 104, 114),
 	Danger     = Color3.fromRGB(255, 69, 58),
+	Success    = Color3.fromRGB(48, 209, 88),
 	White      = Color3.fromRGB(255, 255, 255),
 }
 
@@ -215,8 +216,8 @@ local ACCENTS = {
 }
 
 local Accent = ACCENTS[1].color
-local accentTargets = {}   -- { instance, property }
-local liveAccents   = {}   -- functions(c) called when accent changes
+local accentTargets = {}
+local liveAccents   = {}
 
 local function trackAccent(inst, prop)
 	inst[prop] = Accent
@@ -258,10 +259,10 @@ local Gui = new("ScreenGui", {
 	DisplayOrder = 999,
 })
 do
-	local ok = pcall(function()
+	local okParent = pcall(function()
 		Gui.Parent = (gethui and gethui()) or game:GetService("CoreGui")
 	end)
-	if not ok or not Gui.Parent then
+	if not okParent or not Gui.Parent then
 		Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 	end
 end
@@ -271,7 +272,7 @@ bind(Camera:GetPropertyChangedSignal("ViewportSize"), function()
 end)
 
 -- // Window shell --------------------------------------------------------
-local WINDOW_W, WINDOW_H = 560, 372
+local WINDOW_W, WINDOW_H = 580, 396
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local UIScaleValue = 1
 if IsMobile then
@@ -295,9 +296,9 @@ local Shadow = new("ImageLabel", {
 	ImageTransparency = 1,
 	ScaleType = Enum.ScaleType.Slice,
 	SliceCenter = Rect.new(49, 49, 450, 450),
-	SliceScale = 1.2,
-	Size = UDim2.new(1, 80, 1, 80),
-	Position = UDim2.fromOffset(-40, -40),
+	SliceScale = 1.25,
+	Size = UDim2.new(1, 90, 1, 90),
+	Position = UDim2.fromOffset(-45, -45),
 	Parent = Holder,
 })
 
@@ -311,20 +312,32 @@ local Window = new("CanvasGroup", {
 	Parent = Holder,
 })
 new("UICorner", { CornerRadius = UDim.new(0, 26), Parent = Window })
-new("UIStroke", { Color = Theme.Stroke, Transparency = 0.93, Thickness = 1, Parent = Window })
+new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Thickness = 1, Parent = Window })
 local WindowScale = new("UIScale", { Scale = 0.9, Parent = Window })
+
+-- Subtle top ambient accent line inside window
+local TopLine = new("Frame", {
+	BackgroundColor3 = Accent,
+	BackgroundTransparency = 0.55,
+	BorderSizePixel = 0,
+	Size = UDim2.new(1, 0, 0, 2),
+	ZIndex = 3,
+	Parent = Window,
+})
+trackAccent(TopLine, "BackgroundColor3")
 
 -- // Header (status bar) -------------------------------------------------
 local Header = new("Frame", {
 	BackgroundTransparency = 1,
-	Size = UDim2.new(1, 0, 0, 46),
+	Size = UDim2.new(1, 0, 0, 48),
+	ZIndex = 2,
 	Parent = Window,
 })
 
 local TimeLabel = new("TextLabel", {
 	BackgroundTransparency = 1,
 	Position = UDim2.fromOffset(18, 0),
-	Size = UDim2.new(0, 90, 1, 0),
+	Size = UDim2.new(0, 110, 1, 0),
 	Font = Enum.Font.GothamBold,
 	TextSize = 14,
 	TextColor3 = Theme.TextMain,
@@ -336,21 +349,33 @@ local TimeLabel = new("TextLabel", {
 local BrandPill = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(164, 28),
+	Size = UDim2.fromOffset(188, 30),
 	BackgroundColor3 = Theme.Surface,
 	BorderSizePixel = 0,
 	Parent = Header,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 14), Parent = BrandPill })
-new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Parent = BrandPill })
+new("UICorner", { CornerRadius = UDim.new(0, 15), Parent = BrandPill })
+new("UIStroke", { Color = Theme.Stroke, Transparency = 0.9, Parent = BrandPill })
+
+local StatusDot = new("Frame", {
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.fromOffset(10, 15),
+	Size = UDim2.fromOffset(6, 6),
+	BackgroundColor3 = Theme.Success,
+	BorderSizePixel = 0,
+	Parent = BrandPill,
+})
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = StatusDot })
+
 local BrandText = new("TextLabel", {
 	BackgroundTransparency = 1,
-	Size = UDim2.fromScale(1, 1),
+	Position = UDim2.fromOffset(16, 0),
+	Size = UDim2.new(1, -22, 1, 0),
 	Font = Enum.Font.GothamBold,
-	TextSize = 12,
+	TextSize = 11.5,
 	TextColor3 = Theme.TextMain,
 	RichText = true,
-	Text = "GIGACHAD GARAGE",
+	Text = string.format('GIGACHAD <font color="%s">GARAGE</font>', toHex(Accent)),
 	Parent = BrandPill,
 })
 liveAccents[#liveAccents + 1] = function(c)
@@ -361,12 +386,12 @@ local FpsLabel = new("TextLabel", {
 	BackgroundTransparency = 1,
 	AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -18, 0, 0),
-	Size = UDim2.new(0, 120, 1, 0),
+	Size = UDim2.new(0, 140, 1, 0),
 	Font = Enum.Font.Gotham,
 	TextSize = 11,
 	TextColor3 = Theme.TextDim,
 	TextXAlignment = Enum.TextXAlignment.Right,
-	Text = "60 FPS",
+	Text = "60 FPS  •  0 ms",
 	Parent = Header,
 })
 
@@ -382,17 +407,19 @@ new("Frame", {
 -- // Content + Tab bar ---------------------------------------------------
 local Content = new("Frame", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(0, 46),
-	Size = UDim2.new(1, 0, 1, -100),
+	Position = UDim2.fromOffset(0, 48),
+	Size = UDim2.new(1, 0, 1, -104),
 	ClipsDescendants = true,
+	ZIndex = 2,
 	Parent = Window,
 })
 
 local TabBar = new("Frame", {
 	BackgroundColor3 = Theme.TabBar,
 	BorderSizePixel = 0,
-	Position = UDim2.new(0, 0, 1, -54),
-	Size = UDim2.new(1, 0, 0, 54),
+	Position = UDim2.new(0, 0, 1, -56),
+	Size = UDim2.new(1, 0, 0, 56),
+	ZIndex = 2,
 	Parent = Window,
 })
 new("Frame", {
@@ -406,12 +433,22 @@ new("Frame", {
 local Pill = new("Frame", {
 	BackgroundColor3 = Theme.SurfaceAlt,
 	BorderSizePixel = 0,
-	Size = UDim2.fromOffset(48, 34),
+	Size = UDim2.fromOffset(52, 36),
 	Position = UDim2.fromOffset(32, 10),
 	ZIndex = 1,
 	Parent = TabBar,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 10), Parent = Pill })
+new("UICorner", { CornerRadius = UDim.new(0, 11), Parent = Pill })
+local PillAccentLine = new("Frame", {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -3),
+	Size = UDim2.fromOffset(18, 2),
+	BackgroundColor3 = Accent,
+	BorderSizePixel = 0,
+	Parent = Pill,
+})
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = PillAccentLine })
+trackAccent(PillAccentLine, "BackgroundColor3")
 
 -- // Icons (pure vector, no images) --------------------------------------
 local function buildIcon(kind, parent, color)
@@ -462,8 +499,8 @@ end
 local TAB_NAMES = { "Player", "Visuals", "Teleport", "Misc", "Settings" }
 local TAB_ICONS = { "player", "visuals", "teleport", "misc", "settings" }
 
-local tabButtons = {}
-local pages      = {}
+local tabButtons  = {}
+local pages       = {}
 local pageScrolls = {}
 
 for i = 1, 5 do
@@ -527,7 +564,7 @@ end
 
 local function computePillX(i)
 	local cellW = WINDOW_W / 5
-	return math.floor((i - 1) * cellW + (cellW - 48) / 2)
+	return math.floor((i - 1) * cellW + (cellW - 52) / 2)
 end
 
 local activeTab = 0
@@ -651,7 +688,7 @@ local function Notify(title, message, duration)
 		Parent = NotifHolder,
 	})
 	new("UICorner", { CornerRadius = UDim.new(0, 18), Parent = notif })
-	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Parent = notif })
+	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.9, Parent = notif })
 	new("UIPadding", {
 		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12),
 		PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
@@ -752,7 +789,7 @@ local function Section(pageIndex, title)
 		Parent = holder,
 	})
 	new("UICorner", { CornerRadius = UDim.new(0, 16), Parent = card })
-	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.94, Parent = card })
+	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.93, Parent = card })
 	new("UIListLayout", { Padding = UDim.new(0, 0), SortOrder = Enum.SortOrder.LayoutOrder, Parent = card })
 	new("UIPadding", {
 		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12),
@@ -837,10 +874,12 @@ local function Section(pageIndex, title)
 		render(true)
 
 		return {
-			Set = function(v)
-				if v ~= state then
-					state = v and true or false
+			Set = function(v, fire)
+				local nv = v and true or false
+				if nv ~= state then
+					state = nv
 					render(true)
+					if fire ~= false and cfg.callback then cfg.callback(state) end
 				end
 			end,
 			Get = function() return state end,
@@ -857,7 +896,7 @@ local function Section(pageIndex, title)
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 8),
-			Size = UDim2.new(1, -60, 0, 14),
+			Size = UDim2.new(1, -76, 0, 14),
 			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
@@ -865,7 +904,7 @@ local function Section(pageIndex, title)
 		})
 		local valueLabel = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 8), Size = UDim2.new(0, 60, 0, 14),
+			Position = UDim2.new(1, 0, 0, 8), Size = UDim2.new(0, 76, 0, 14),
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Theme.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			Text = "", Parent = row,
@@ -947,10 +986,12 @@ local function Section(pageIndex, title)
 			end
 		end)
 
-		-- Initial render only: must NOT fire the callback, so loading the hub never touches the game
 		task.defer(function() setValue(cfg.default or min, false) end)
 
-		return { Set = function(v) setValue(v, true) end }
+		return {
+			Set = function(v, fire) setValue(v, fire ~= false) end,
+			Get = function() return val end,
+		}
 	end
 
 	function section:Button(cfg)
@@ -959,13 +1000,13 @@ local function Section(pageIndex, title)
 			self.count += 1
 			local wrap = new("Frame", {
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, 0, 0, 58),
+				Size = UDim2.new(1, 0, 0, 56),
 				Parent = self.card,
 			})
-			new("UIPadding", { PaddingTop = UDim.new(0, 9), PaddingBottom = UDim.new(0, 9), Parent = wrap })
+			new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), Parent = wrap })
 			local btn = new("TextButton", {
 				Text = cfg.text,
-				Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.White,
+				Font = Enum.Font.GothamBold, TextSize = 13.5, TextColor3 = Theme.White,
 				BackgroundColor3 = (cfg.style == "danger") and Theme.Danger or Accent,
 				BorderSizePixel = 0,
 				Size = UDim2.fromScale(1, 1),
@@ -1016,7 +1057,7 @@ local function Section(pageIndex, title)
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(0.5, 0, 1, 0),
+			Size = UDim2.new(0.45, 0, 1, 0),
 			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
@@ -1024,11 +1065,11 @@ local function Section(pageIndex, title)
 		})
 		local valueLabel = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -18, 0.5, 0), Size = UDim2.new(0.5, -18, 0, 16),
+			Position = UDim2.new(1, -18, 0.5, 0), Size = UDim2.new(0.55, -18, 0, 16),
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Theme.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Text = "—", Parent = row,
+			Text = cfg.default or "—", Parent = row,
 		})
 		local chev = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5),
@@ -1046,7 +1087,7 @@ local function Section(pageIndex, title)
 		new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
 
 		local open = false
-		local selected = nil
+		local selected = cfg.default
 
 		local function closeList()
 			open = false
@@ -1089,13 +1130,22 @@ local function Section(pageIndex, title)
 				end)
 			end
 			tween(chev, 0.25, { Rotation = 180 })
-			local h = #opts * 36 + 6
+			local h = math.min(#opts * 36 + 6, 222)
 			tween(list, 0.35, { Size = UDim2.new(1, 0, 0, h) }, Enum.EasingStyle.Quart)
 		end
 
 		row.Activated:Connect(function()
 			if open then closeList() else openList() end
 		end)
+
+		return {
+			Set = function(opt, fire)
+				selected = opt
+				valueLabel.Text = opt and tostring(opt) or "—"
+				if fire and cfg.callback then cfg.callback(opt) end
+			end,
+			Get = function() return selected end,
+		}
 	end
 
 	function section:Keybind(cfg)
@@ -1237,24 +1287,27 @@ local function Section(pageIndex, title)
 		self.count += 1
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 44),
+			Size = UDim2.new(1, 0, 0, 42),
 			Parent = self.card,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(0.6, 0, 1, 0),
+			Size = UDim2.new(0.45, 0, 1, 0),
 			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Text = cfg.text, Parent = row,
 		})
-		new("TextLabel", {
+		local valLabel = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.new(0.4, 0, 0, 16),
+			Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.new(0.55, 0, 0, 16),
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Theme.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Text = cfg.value, Parent = row,
 		})
+		return {
+			Set = function(v) valLabel.Text = tostring(v) end,
+		}
 	end
 
 	function section:Footer(text)
@@ -1288,20 +1341,33 @@ do
 end
 
 local State = {
-	WalkSpeed = BaseWS,
-	JumpPower = BaseJP,
-	InfJump  = false,
-	Noclip   = false,
-	Fly      = false,
-	FlySpeed = 60,
-	ClickTP  = false,
-	AntiAFK  = true,
-	ESP = { Master = false, Names = true, Distance = false, Tracers = false, TeamCheck = true },
+	WalkSpeed  = BaseWS,
+	JumpPower  = BaseJP,
+	InfJump    = false,
+	Noclip     = false,
+	Fly        = false,
+	FlySpeed   = 60,
+	SpinBot    = false,
+	SpinSpeed  = 18,
+	ClickTP    = false,
+	AntiAFK    = true,
+	NoFog      = false,
+	Xray       = false,
+	Freecam    = false,
+	FreecamSpd = 45,
+	ESP = {
+		Master    = false,
+		Names     = true,
+		Distance  = false,
+		Health    = true,
+		Tracers   = false,
+		TeamCheck = true,
+	},
 }
 
 local function getChar() return LocalPlayer.Character end
 local OriginalGravity = workspace.Gravity
-local OriginalFOV = Camera.FieldOfView
+local OriginalFOV     = Camera.FieldOfView
 local function getHRP()
 	local c = getChar()
 	return c and c:FindFirstChild("HumanoidRootPart")
@@ -1336,7 +1402,7 @@ end)
 
 task.spawn(function()
 	while Gui.Parent do
-		task.wait(0.8)
+		task.wait(0.75)
 		local hum = getHum()
 		if hum then
 			if State.WalkSpeed ~= BaseWS and hum.WalkSpeed ~= State.WalkSpeed then
@@ -1356,7 +1422,7 @@ bind(UserInputService.JumpRequest, function()
 	end
 end)
 
--- // Noclip --------------------------------------------------------------
+-- // Noclip & SpinBot ----------------------------------------------------
 bind(RunService.Stepped, function()
 	if State.Noclip then
 		local char = getChar()
@@ -1364,6 +1430,15 @@ bind(RunService.Stepped, function()
 			for _, p in ipairs(char:GetDescendants()) do
 				if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
 			end
+		end
+	end
+end)
+
+bind(RunService.Heartbeat, function(dt)
+	if State.SpinBot and not State.Fly then
+		local hrp = getHRP()
+		if hrp then
+			hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(State.SpinSpeed * 60 * dt), 0)
 		end
 	end
 end)
@@ -1397,19 +1472,63 @@ bind(RunService.Heartbeat, function()
 	end
 end)
 
+-- // Freecam -------------------------------------------------------------
+local freecamCF = nil
+local function setFreecam(on)
+	State.Freecam = on
+	local hum = getHum()
+	if on then
+		freecamCF = Camera.CFrame
+		Camera.CameraType = Enum.CameraType.Scriptable
+		if hum then hum.WalkSpeed = 0 end
+	else
+		Camera.CameraType = Enum.CameraType.Custom
+		freecamCF = nil
+		if hum then hum.WalkSpeed = State.WalkSpeed end
+	end
+end
+
+bind(RunService.RenderStepped, function(dt)
+	if State.Freecam then
+		if not freecamCF then freecamCF = Camera.CFrame end
+		local move = Vector3.new(0, 0, 0)
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += freecamCF.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= freecamCF.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= freecamCF.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += freecamCF.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.E) or UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+			move += Vector3.new(0, 1, 0)
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Q) or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+			move -= Vector3.new(0, 1, 0)
+		end
+		local spd = State.FreecamSpd * (UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and 2 or 1)
+		local pos = freecamCF.Position + (move.Magnitude > 0 and move.Unit * spd * dt or Vector3.zero)
+		local _, yaw, roll = Camera.CFrame:ToOrientation()
+		local pitch = select(1, freecamCF:ToEulerAnglesYXZ())
+		if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+			local delta = UserInputService:GetMouseDelta()
+			pitch = math.clamp(pitch - math.rad(delta.Y * 0.25), math.rad(-85), math.rad(85))
+			yaw = yaw - math.rad(delta.X * 0.25)
+		end
+		freecamCF = CFrame.new(pos) * CFrame.fromEulerAnglesYXZ(pitch, yaw, roll)
+		Camera.CFrame = freecamCF
+	end
+end)
+
 -- // Ctrl + Click TP -----------------------------------------------------
 bind(UserInputService.InputBegan, function(io, gp)
 	if gp then return end
 	if State.ClickTP and io.UserInputType == Enum.UserInputType.MouseButton1
 		and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
 		local hrp = getHRP()
-		if hrp then
+		if hrp and Mouse.Hit then
 			hrp.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0))
 		end
 	end
 end)
 
--- // Fullbright ----------------------------------------------------------
+-- // Fullbright & NoFog & X-Ray ----------------------------------------
 local savedLighting = nil
 local function setFullbright(on)
 	if on then
@@ -1433,6 +1552,49 @@ local function setFullbright(on)
 		if savedLighting then
 			for k, v in pairs(savedLighting) do Lighting[k] = v end
 		end
+	end
+end
+
+local savedFog = nil
+local function setNoFog(on)
+	if on then
+		savedFog = { FogStart = Lighting.FogStart, FogEnd = Lighting.FogEnd }
+		Lighting.FogStart = 1000000
+		Lighting.FogEnd = 1000000
+		for _, obj in ipairs(Lighting:GetChildren()) do
+			if obj:IsA("Atmosphere") then
+				obj:SetAttribute("_SavedDensity", obj.Density)
+				obj.Density = 0
+			end
+		end
+	else
+		if savedFog then
+			Lighting.FogStart = savedFog.FogStart
+			Lighting.FogEnd = savedFog.FogEnd
+		end
+		for _, obj in ipairs(Lighting:GetChildren()) do
+			if obj:IsA("Atmosphere") and obj:GetAttribute("_SavedDensity") then
+				obj.Density = obj:GetAttribute("_SavedDensity")
+			end
+		end
+	end
+end
+
+local xraySaved = {}
+local function setXray(on)
+	State.Xray = on
+	if on then
+		for _, p in ipairs(workspace:GetDescendants()) do
+			if p:IsA("BasePart") and not p:IsDescendantOf(getChar() or workspace) and p.Transparency < 0.7 then
+				xraySaved[p] = p.Transparency
+				p.Transparency = 0.65
+			end
+		end
+	else
+		for part, tr in pairs(xraySaved) do
+			if part and part.Parent then part.Transparency = tr end
+		end
+		xraySaved = {}
 	end
 end
 
@@ -1538,8 +1700,8 @@ local function espAdd(plr)
 	trackAccent(d.hl, "FillColor")
 
 	d.bb = new("BillboardGui", {
-		Size = UDim2.fromOffset(220, 40),
-		StudsOffset = Vector3.new(0, 2.4, 0),
+		Size = UDim2.fromOffset(220, 52),
+		StudsOffset = Vector3.new(0, 2.6, 0),
 		AlwaysOnTop = true,
 		Enabled = false,
 		Parent = espFolder,
@@ -1547,11 +1709,11 @@ local function espAdd(plr)
 	d.nameL = new("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, 16),
-		Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = Theme.White,
+		Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Theme.White,
 		TextStrokeTransparency = 0.4,
 		Text = plr.DisplayName, Parent = d.bb,
 	})
-	d.distL = new("TextLabel", {
+	d.metaL = new("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, 16),
 		Size = UDim2.new(1, 0, 0, 14),
@@ -1608,16 +1770,24 @@ bind(RunService.RenderStepped, function()
 			d.hl.Enabled = masterOn
 		end
 
-		local showBB = (masterOn and (State.ESP.Names or State.ESP.Distance)) and true or false
+		local showBB = (masterOn and (State.ESP.Names or State.ESP.Distance or State.ESP.Health)) and true or false
 		if d.bb then
 			d.bb.Adornee = head
 			d.bb.Enabled = showBB
 			d.nameL.Visible = State.ESP.Names
-			d.distL.Visible = State.ESP.Distance
-			if showBB and State.ESP.Distance and myHRP and head then
-				d.distL.Text = string.format("%d studs", (head.Position - myHRP.Position).Magnitude)
+			local showMeta = State.ESP.Distance or State.ESP.Health
+			d.metaL.Visible = showMeta
+			if showBB and showMeta then
+				local parts = {}
+				if State.ESP.Health and hum then
+					table.insert(parts, string.format("%d HP", math.floor(hum.Health + 0.5)))
+				end
+				if State.ESP.Distance and myHRP and head then
+					table.insert(parts, string.format("%d st", (head.Position - myHRP.Position).Magnitude))
+				end
+				d.metaL.Text = table.concat(parts, " • ")
 			else
-				d.distL.Text = ""
+				d.metaL.Text = ""
 			end
 		end
 
@@ -1638,9 +1808,10 @@ bind(RunService.RenderStepped, function()
 	end
 end)
 
--- // Teleport helpers ----------------------------------------------------
+-- // Teleport & Utility helpers ----------------------------------------
 local selectedTarget = nil
 local savedPos = nil
+local waypoints = {}
 
 local function playerOptions()
 	local list = {}
@@ -1651,21 +1822,44 @@ local function playerOptions()
 	return list
 end
 
+local function getClosestPlayer()
+	local hrp = getHRP()
+	if not hrp then return nil end
+	local best, bestDist = nil, math.huge
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local sameTeam = State.ESP.TeamCheck and plr.Team ~= nil and LocalPlayer.Team ~= nil and plr.Team == LocalPlayer.Team
+			local tHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+			local tHum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+			if not sameTeam and tHRP and tHum and tHum.Health > 0 then
+				local dist = (tHRP.Position - hrp.Position).Magnitude
+				if dist < bestDist then
+					bestDist = dist
+					best = plr
+				end
+			end
+		end
+	end
+	return best
+end
+
+local function teleportToPlayer(plr)
+	local hrp = getHRP()
+	local tHRP = plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+	if hrp and tHRP then
+		hrp.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
+		Notify("Teleport", "Teleported to " .. plr.DisplayName)
+	else
+		Notify("Teleport", "Target has no character")
+	end
+end
+
 local function teleportToSelected()
 	if not selectedTarget then
 		Notify("Teleport", "Select a player first")
 		return
 	end
-	local target = Players:FindFirstChild(selectedTarget)
-	local hrp = getHRP()
-	local tChar = target and target.Character
-	local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
-	if hrp and tHRP then
-		hrp.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
-		Notify("Teleport", "Teleported to " .. target.DisplayName)
-	else
-		Notify("Teleport", "Target has no character")
-	end
+	teleportToPlayer(Players:FindFirstChild(selectedTarget))
 end
 
 local function rejoin()
@@ -1680,7 +1874,7 @@ end
 
 local function serverHop()
 	local body
-	local ok = pcall(function()
+	local okReq = pcall(function()
 		local req = request or (syn and syn.request) or http_request
 		if not req then error("no http") end
 		local res = req({
@@ -1689,7 +1883,7 @@ local function serverHop()
 		})
 		body = HttpService:JSONDecode(res.Body)
 	end)
-	if ok and body and body.data and #body.data > 0 then
+	if okReq and body and body.data and #body.data > 0 then
 		local best = body.data[1]
 		for _, s in ipairs(body.data) do
 			if s.playing and best.playing and s.playing < best.playing then best = s end
@@ -1705,13 +1899,22 @@ end
 Boot.Step("Building tabs", 0.85)
 
 -- // Build tabs ----------------------------------------------------------
--- PLAYER
+-- 1. PLAYER
 local secMove = Section(1, "Movement")
-secMove:Slider({ text = "Walk Speed", min = 0, max = 250, default = BaseWS, callback = setWalkSpeed })
-secMove:Slider({ text = "Jump Power", min = 0, max = 300, default = BaseJP, callback = setJumpPower })
-secMove:Slider({ text = "Gravity", min = 0, max = 500, default = workspace.Gravity, step = 0.1, callback = function(v)
+local sWalk = secMove:Slider({ text = "Walk Speed", min = 0, max = 250, default = BaseWS, callback = setWalkSpeed })
+local sJump = secMove:Slider({ text = "Jump Power", min = 0, max = 300, default = BaseJP, callback = setJumpPower })
+local sGrav = secMove:Slider({ text = "Gravity", min = 0, max = 500, default = workspace.Gravity, step = 0.1, callback = function(v)
 	workspace.Gravity = v
 end })
+secMove:Button({
+	text = "Reset Movement & Gravity",
+	callback = function()
+		sWalk.Set(BaseWS)
+		sJump.Set(BaseJP)
+		sGrav.Set(OriginalGravity)
+		Notify("Movement", "Reset to default values")
+	end,
+})
 
 local secAbil = Section(1, "Abilities")
 secAbil:Toggle({ text = "Infinite Jump", default = false, callback = function(v) State.InfJump = v end })
@@ -1721,23 +1924,45 @@ secAbil:Toggle({
 	default = false,
 	callback = function(v)
 		State.Fly = v
-		Notify("Fly", v and "Enabled — WASD to move, Space up, Ctrl down" or "Disabled")
+		Notify("Fly", v and "Enabled — WASD, Space, Ctrl" or "Disabled")
 	end,
 })
-secAbil:Slider({ text = "Fly Speed", min = 10, max = 200, default = 60, callback = function(v) State.FlySpeed = v end })
+secAbil:Slider({ text = "Fly Speed", min = 10, max = 220, default = 60, callback = function(v) State.FlySpeed = v end })
+secAbil:Toggle({ text = "SpinBot", default = false, callback = function(v) State.SpinBot = v end })
+secAbil:Slider({ text = "Spin Speed", min = 1, max = 60, default = 18, callback = function(v) State.SpinSpeed = v end })
 
--- VISUALS
-local secESP = Section(2, "Players")
+local secChar = Section(1, "Character Actions")
+secChar:Button({
+	text = "Respawn Character",
+	callback = function()
+		local hum = getHum()
+		if hum then
+			hum.Health = 0
+			Notify("Character", "Respawning...")
+		end
+	end,
+})
+secChar:Button({
+	text = "Sit / Unsit",
+	callback = function()
+		local hum = getHum()
+		if hum then hum.Sit = not hum.Sit end
+	end,
+})
+
+-- 2. VISUALS
+local secESP = Section(2, "Player ESP")
 secESP:Toggle({
 	text = "Player Highlights",
 	default = false,
 	callback = function(v)
 		State.ESP.Master = v
 		if v then espRefresh() else espClearAll() end
-		Notify("Visuals", v and "Player highlights enabled" or "Player highlights disabled")
+		Notify("Visuals", v and "Player ESP enabled" or "Player ESP disabled")
 	end,
 })
 secESP:Toggle({ text = "Names", default = true, callback = function(v) State.ESP.Names = v end })
+secESP:Toggle({ text = "Health", default = true, callback = function(v) State.ESP.Health = v end })
 secESP:Toggle({ text = "Distance", default = false, callback = function(v) State.ESP.Distance = v end })
 secESP:Toggle({
 	text = "Tracers",
@@ -1752,32 +1977,45 @@ secESP:Toggle({
 })
 secESP:Toggle({ text = "Team Check", default = true, callback = function(v) State.ESP.TeamCheck = v end })
 
-local secWorld = Section(2, "World")
+local secWorld = Section(2, "World & Lighting")
+secWorld:Toggle({ text = "Fullbright", default = false, callback = function(v) setFullbright(v) end })
+secWorld:Toggle({ text = "Remove Fog", default = false, callback = function(v) setNoFog(v) end })
 secWorld:Toggle({
-	text = "Fullbright",
+	text = "X-Ray Walls",
 	default = false,
-	callback = function(v) setFullbright(v) end,
+	callback = function(v)
+		setXray(v)
+		Notify("Visuals", v and "X-Ray enabled" or "X-Ray restored")
+	end,
+})
+secWorld:Slider({
+	text = "Time of Day",
+	min = 0, max = 24, default = Lighting.ClockTime, step = 0.5, suffix = "h",
+	callback = function(v) Lighting.ClockTime = v end,
 })
 
--- TELEPORT
+-- 3. TELEPORT
 local secTP = Section(3, "Players")
 secTP:Dropdown({
 	text = "Target",
 	options = playerOptions,
 	callback = function(v) selectedTarget = v end,
 })
+secTP:Button({ text = "Teleport to Selected", style = "filled", callback = teleportToSelected })
 secTP:Button({
-	text = "Refresh Player List",
-	callback = function() Notify("Teleport", "Open the target list to refresh") end,
+	text = "Teleport to Nearest",
+	callback = function()
+		local near = getClosestPlayer()
+		if near then
+			teleportToPlayer(near)
+		else
+			Notify("Teleport", "No valid target nearby")
+		end
+	end,
 })
-secTP:Button({ text = "Teleport", style = "filled", callback = teleportToSelected })
 
-local secQuick = Section(3, "Quick Travel")
-secQuick:Toggle({
-	text = "Ctrl + Click Teleport",
-	default = false,
-	callback = function(v) State.ClickTP = v end,
-})
+local secQuick = Section(3, "Quick Travel & Waypoints")
+secQuick:Toggle({ text = "Ctrl + Click Teleport", default = false, callback = function(v) State.ClickTP = v end })
 secQuick:Button({
 	text = "Save Position",
 	callback = function()
@@ -1802,8 +2040,31 @@ secQuick:Button({
 		end
 	end,
 })
+secQuick:Button({
+	text = "Add Waypoint Slot",
+	callback = function()
+		local hrp = getHRP()
+		if hrp then
+			local idx = #waypoints + 1
+			waypoints[idx] = hrp.CFrame
+			Notify("Waypoint", "Saved Slot #" .. idx)
+		end
+	end,
+})
+secQuick:Button({
+	text = "TP to Last Waypoint Slot",
+	callback = function()
+		local hrp = getHRP()
+		if hrp and #waypoints > 0 then
+			hrp.CFrame = waypoints[#waypoints]
+			Notify("Waypoint", "Teleported to Slot #" .. #waypoints)
+		else
+			Notify("Waypoint", "No waypoint slots saved")
+		end
+	end,
+})
 
--- MISC
+-- 4. MISC
 local secPerf = Section(4, "Performance")
 secPerf:Toggle({
 	text = "FPS Boost",
@@ -1815,29 +2076,62 @@ secPerf:Toggle({
 })
 
 local secCam = Section(4, "Camera")
-secCam:Slider({
+local sFov = secCam:Slider({
 	text = "Field of View",
-	min = 30, max = 120, default = Camera.FieldOfView,
+	min = 30, max = 120, default = Camera.FieldOfView, suffix = "°",
 	callback = function(v) Camera.FieldOfView = v end,
 })
+secCam:Button({
+	text = "Reset FOV",
+	callback = function()
+		sFov.Set(OriginalFOV)
+		Notify("Camera", "FOV reset to " .. math.floor(OriginalFOV) .. "°")
+	end,
+})
+secCam:Toggle({
+	text = "Freecam (WASD + RMB)",
+	default = false,
+	callback = function(v)
+		setFreecam(v)
+		Notify("Freecam", v and "Enabled — WASD to move, Q/E up/down" or "Disabled")
+	end,
+})
+secCam:Slider({ text = "Freecam Speed", min = 10, max = 150, default = 45, callback = function(v) State.FreecamSpd = v end })
 
-local secUtil = Section(4, "Utility")
+local secUtil = Section(4, "Utility & Server")
 secUtil:Toggle({ text = "Anti-AFK", default = true, callback = function(v) State.AntiAFK = v end })
+secUtil:Button({
+	text = "Copy Position (XYZ)",
+	callback = function()
+		local hrp = getHRP()
+		if hrp and setclipboard then
+			local p = hrp.Position
+			setclipboard(string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z))
+			Notify("Clipboard", "Coordinates copied")
+		else
+			Notify("Clipboard", "Clipboard API unavailable")
+		end
+	end,
+})
 secUtil:Button({ text = "Rejoin Server", style = "filled", callback = rejoin })
 secUtil:Button({ text = "Server Hop", style = "filled", callback = serverHop })
 
-local secStatus = Section(4, "Status")
+local secStatus = Section(4, "Live Telemetry")
 secStatus:Info({ text = "Executor", value = ExecutorName })
-secStatus:Info({ text = "Ping", value = "shown in the header" })
-secStatus:Info({ text = "Script", value = "Universal — all games" })
+local infoPlayers = secStatus:Info({ text = "Players", value = tostring(#Players:GetPlayers()) })
+local infoPos = secStatus:Info({ text = "Position", value = "0, 0, 0" })
 
--- SETTINGS
+-- 5. SETTINGS
 local secTheme = Section(5, "Appearance")
 secTheme:AccentPicker({ text = "Accent Color" })
 secTheme:Toggle({
 	text = "Notifications",
 	default = true,
 	callback = function(v) notifyEnabled = v end,
+})
+secTheme:Button({
+	text = "Test Notification",
+	callback = function() Notify("Gigachad Garage", "Clean UI & active features ready.") end,
 })
 
 local secKeys = Section(5, "Keybinds")
@@ -1852,7 +2146,7 @@ secKeys:Keybind({
 })
 
 local secAbout = Section(5, "Gigachad Garage")
-secAbout:Info({ text = "Version", value = "1.1.0" })
+secAbout:Info({ text = "Version", value = "1.3.0" })
 secAbout:Info({ text = "Executor", value = ExecutorName })
 secAbout:Info({ text = "Game", value = "Universal" })
 secAbout:Footer("STAY SIGMA.")
@@ -1892,7 +2186,7 @@ bind(UserInputService.InputBegan, function(io, gp)
 	end
 end)
 
--- // Clock + FPS loops ---------------------------------------------------
+-- // Clock + FPS + Telemetry loops --------------------------------------
 task.spawn(function()
 	while Gui.Parent do
 		TimeLabel.Text = os.date("%H:%M")
@@ -1907,6 +2201,12 @@ task.spawn(function()
 		local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000 + 0.5)
 		FpsLabel.Text = string.format("%d FPS  •  %d ms", frames, ping)
 		frames = 0
+		infoPlayers.Set(tostring(#Players:GetPlayers()))
+		local hrp = getHRP()
+		if hrp then
+			local p = hrp.Position
+			infoPos.Set(string.format("%d, %d, %d", math.floor(p.X), math.floor(p.Y), math.floor(p.Z)))
+		end
 		task.wait(1)
 	end
 end)
@@ -1922,13 +2222,16 @@ local function Unload()
 	State.InfJump = false
 	State.ClickTP = false
 	State.AntiAFK = false
+	State.SpinBot = false
+	if State.Freecam then setFreecam(false) end
 
 	pcall(function() setFullbright(false) end)
+	pcall(function() setNoFog(false) end)
+	pcall(function() setXray(false) end)
 	pcall(function() setFPSBoost(false) end)
 	pcall(function() espClearAll() end)
 	if flyBV then flyBV:Destroy() flyBV = nil end
 
-	-- Put the game back exactly as it was
 	pcall(function() workspace.Gravity = OriginalGravity end)
 	pcall(function() Camera.FieldOfView = OriginalFOV end)
 	State.WalkSpeed, State.JumpPower = BaseWS, BaseJP
@@ -1953,7 +2256,7 @@ secAbout:Button({
 })
 
 getgenv().GIGACHAD_GARAGE = {
-	Version = "1.1.0",
+	Version = "1.3.0",
 	Unload = Unload,
 	Notify = Notify,
 }
@@ -2045,27 +2348,27 @@ local SHint = new("TextLabel", {
 selectTab(1)
 
 task.spawn(function()
-	task.wait(0.3)
-	tween(SBrand, 0.55, { TextTransparency = 0 })
-	tween(SBrand, 0.55, { Position = UDim2.new(0.5, 0, 0.4, 0) })
-	tween(SSub, 0.5, { TextTransparency = 0 }, nil, nil, 0.15)
-	tween(SSub, 0.5, { Position = UDim2.new(0.5, 0, 0.4, 32) }, nil, nil, 0.15)
-	tween(SDiv, 0.5, { Size = UDim2.fromOffset(140, 1) }, nil, nil, 0.25)
-	tween(SFill, 0.85, { Size = UDim2.fromScale(1, 1) }, nil, nil, 0.35)
-	tween(SCap, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.5)
-	tween(SHint, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.6)
-	task.wait(1.55)
+	task.wait(0.25)
+	tween(SBrand, 0.5, { TextTransparency = 0 })
+	tween(SBrand, 0.5, { Position = UDim2.new(0.5, 0, 0.4, 0) })
+	tween(SSub, 0.45, { TextTransparency = 0 }, nil, nil, 0.12)
+	tween(SSub, 0.45, { Position = UDim2.new(0.5, 0, 0.4, 32) }, nil, nil, 0.12)
+	tween(SDiv, 0.45, { Size = UDim2.fromOffset(140, 1) }, nil, nil, 0.2)
+	tween(SFill, 0.75, { Size = UDim2.fromScale(1, 1) }, nil, nil, 0.3)
+	tween(SCap, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.45)
+	tween(SHint, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.55)
+	task.wait(1.35)
 
-	tween(Splash, 0.4, { GroupTransparency = 1 })
-	tween(SplashScale, 0.4, { Scale = 1.03 })
+	tween(Splash, 0.38, { GroupTransparency = 1 })
+	tween(SplashScale, 0.38, { Scale = 1.03 })
 
-	tween(Window, 0.5, { GroupTransparency = 0 })
-	tween(WindowScale, 0.55, { Scale = 1 }, Enum.EasingStyle.Back)
-	tween(Shadow, 0.5, { ImageTransparency = 0.5 })
+	tween(Window, 0.48, { GroupTransparency = 0 })
+	tween(WindowScale, 0.52, { Scale = 1 }, Enum.EasingStyle.Back)
+	tween(Shadow, 0.48, { ImageTransparency = 0.5 })
 
-	task.delay(0.45, function() Splash:Destroy() end)
-	task.delay(0.7, function()
-		Notify("Gigachad Garage", "Loaded on " .. ExecutorName .. ". Press Right Shift to toggle the UI.")
+	task.delay(0.42, function() Splash:Destroy() end)
+	task.delay(0.65, function()
+		Notify("Gigachad Garage", "v1.3.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
 	end)
 end)
 
@@ -2077,7 +2380,7 @@ end, function(e)
 end)
 
 if ok then
-	print("[Gigachad Garage] v1.1.0 loaded successfully on " .. tostring(ExecutorName))
+	print("[Gigachad Garage] v1.3.0 loaded successfully on " .. tostring(ExecutorName))
 	task.defer(Boot.Finish)
 else
 	Boot.Error(err)
