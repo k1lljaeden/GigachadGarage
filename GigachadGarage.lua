@@ -1,12 +1,9 @@
 --=====================================================================--
---  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.1.0
+--  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.1.0 (Fixed)
 --  iPhone-grade UI. Sigma-grade power. Works in every game.
 --
 --  Toggle UI : Right Shift
 --  Executor  : Solara (works on most executors too)
---
---  ONE-LINE LOADER — upload this file to a GitHub repo and run:
---  loadstring(game:HttpGet("https://raw.githubusercontent.com/USER/REPO/main/GigachadGarage.lua"))()
 --=====================================================================--
 
 -- // Boot loader — appears instantly, shows every init step --------------
@@ -499,7 +496,7 @@ for i = 1, 5 do
 	})
 	tabButtons[i] = { btn = btn, parts = parts, strokes = strokes, label = label }
 
-	local page = new("CanvasGroup", {
+	local page = new("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
@@ -556,7 +553,7 @@ local function selectTab(i)
 	local newPage = pages[i]
 
 	if oldPage then
-		tween(oldPage, 0.15, { GroupTransparency = 1, Position = UDim2.fromOffset(-12 * dir, 0) })
+		tween(oldPage, 0.15, { Position = UDim2.fromOffset(-12 * dir, 0) })
 		task.delay(0.16, function()
 			if activeTab ~= prev then oldPage.Visible = false end
 		end)
@@ -564,8 +561,7 @@ local function selectTab(i)
 
 	newPage.Visible = true
 	newPage.Position = UDim2.fromOffset(14 * dir, 0)
-	newPage.GroupTransparency = 1
-	tween(newPage, 0.3, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) })
+	tween(newPage, 0.3, { Position = UDim2.fromOffset(0, 0) })
 end
 
 for i = 1, 5 do
@@ -764,7 +760,7 @@ local function Section(pageIndex, title)
 		Parent = card,
 	})
 
-	local section = { count = 0 }
+	local section = { count = 0, card = card }
 	local function separator()
 		if section.count > 0 then
 			new("Frame", {
