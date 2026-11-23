@@ -1,6 +1,6 @@
 --=====================================================================--
---  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.4.0
---  Dynamic Island + Aimbot + Universal Toolkit.
+--  GIGACHAD GARAGE  |  UNIVERSAL HUB  |  v1.5.0
+--  Spacious UI + Smooth Motion + Radar + Spectate + Aimbot + Island.
 --
 --  Toggle UI : Right Shift
 --  Executor  : Solara (works on most executors too)
@@ -60,7 +60,7 @@ local Boot = {} do
 	local barBg = Instance.new("Frame")
 	barBg.AnchorPoint = Vector2.new(0.5, 0.5)
 	barBg.Position = UDim2.new(0.5, 0, 0.5, 24)
-	barBg.Size = UDim2.fromOffset(180, 3)
+	barBg.Size = UDim2.fromOffset(190, 3)
 	barBg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	barBg.BackgroundTransparency = 0.92
 	barBg.BorderSizePixel = 0
@@ -96,19 +96,19 @@ local Boot = {} do
 		status.Text = string.upper(text)
 		pcall(function()
 			TweenService0:Create(barFill,
-				TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+				TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 				{ Size = UDim2.fromScale(alpha, 1) }):Play()
 		end)
-		task.wait(0.1)
+		task.wait(0.09)
 	end
 
 	function Boot.Finish()
 		pcall(function()
 			TweenService0:Create(root,
-				TweenInfo.new(0.35, Enum.EasingStyle.Quint),
+				TweenInfo.new(0.38, Enum.EasingStyle.Quint),
 				{ GroupTransparency = 1 }):Play()
 		end)
-		task.delay(0.4, function() sg:Destroy() end)
+		task.delay(0.42, function() sg:Destroy() end)
 	end
 
 	function Boot.Error(errText)
@@ -186,6 +186,11 @@ local function tween(obj, ti, props, style, dir, delay)
 	return t
 end
 
+local function damp(current, target, speed, dt)
+	local alpha = 1 - math.exp(-speed * math.max(dt, 0))
+	return current + (target - current) * alpha
+end
+
 local function toHex(c)
 	return string.format("#%02X%02X%02X",
 		math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
@@ -194,14 +199,14 @@ end
 -- // Theme ---------------------------------------------------------------
 local Theme = {
 	Window     = Color3.fromRGB(16, 16, 20),
-	Surface    = Color3.fromRGB(26, 26, 31),
-	SurfaceAlt = Color3.fromRGB(42, 42, 49),
+	Surface    = Color3.fromRGB(26, 26, 32),
+	SurfaceAlt = Color3.fromRGB(43, 43, 51),
 	TabBar     = Color3.fromRGB(12, 12, 15),
 	Island     = Color3.fromRGB(8, 8, 10),
 	Stroke     = Color3.fromRGB(255, 255, 255),
-	TextMain   = Color3.fromRGB(240, 240, 246),
-	TextDim    = Color3.fromRGB(154, 154, 164),
-	TextFaint  = Color3.fromRGB(104, 104, 114),
+	TextMain   = Color3.fromRGB(242, 242, 248),
+	TextDim    = Color3.fromRGB(156, 156, 168),
+	TextFaint  = Color3.fromRGB(106, 106, 118),
 	Danger     = Color3.fromRGB(255, 69, 58),
 	Success    = Color3.fromRGB(48, 209, 88),
 	White      = Color3.fromRGB(255, 255, 255),
@@ -245,6 +250,7 @@ local KeybindListening = 0
 local LastCaptureTick = 0
 local notifyEnabled = true
 local islandEnabled = true
+local radarEnabled = false
 
 Boot.Step("Building interface", 0.25)
 
@@ -278,7 +284,7 @@ local IslandHolder = new("Frame", {
 	BackgroundTransparency = 1,
 	AnchorPoint = Vector2.new(0.5, 0),
 	Position = UDim2.new(0.5, 0, 0, 10),
-	Size = UDim2.fromOffset(420, 120),
+	Size = UDim2.fromOffset(440, 120),
 	ZIndex = 75,
 	Parent = Gui,
 })
@@ -286,18 +292,18 @@ local IslandHolder = new("Frame", {
 local IslandPill = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0),
 	Position = UDim2.new(0.5, 0, 0, 0),
-	Size = UDim2.fromOffset(186, 34),
+	Size = UDim2.fromOffset(196, 36),
 	BackgroundColor3 = Theme.Island,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
 	Parent = IslandHolder,
 })
-new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = IslandPill })
-local IslandStroke = new("UIStroke", { Color = Theme.Stroke, Transparency = 0.88, Thickness = 1, Parent = IslandPill })
+local IslandCorner = new("UICorner", { CornerRadius = UDim.new(0, 18), Parent = IslandPill })
+new("UIStroke", { Color = Theme.Stroke, Transparency = 0.88, Thickness = 1, Parent = IslandPill })
 
 local IslandLed = new("Frame", {
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.fromOffset(12, 17),
+	Position = UDim2.fromOffset(12, 18),
 	Size = UDim2.fromOffset(8, 8),
 	BackgroundColor3 = Accent,
 	BorderSizePixel = 0,
@@ -309,7 +315,7 @@ trackAccent(IslandLed, "BackgroundColor3")
 local IslandTitle = new("TextLabel", {
 	BackgroundTransparency = 1,
 	Position = UDim2.fromOffset(26, 0),
-	Size = UDim2.new(1, -36, 0, 34),
+	Size = UDim2.new(1, -36, 0, 36),
 	Font = Enum.Font.GothamBold,
 	TextSize = 11.5,
 	TextColor3 = Theme.TextMain,
@@ -321,7 +327,7 @@ local IslandTitle = new("TextLabel", {
 
 local IslandSub = new("TextLabel", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(14, 34),
+	Position = UDim2.fromOffset(14, 36),
 	Size = UDim2.new(1, -28, 0, 16),
 	Font = Enum.Font.Gotham,
 	TextSize = 11,
@@ -334,7 +340,7 @@ local IslandSub = new("TextLabel", {
 
 local IslandActions = new("Frame", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(14, 56),
+	Position = UDim2.fromOffset(14, 58),
 	Size = UDim2.new(1, -28, 0, 28),
 	Parent = IslandPill,
 })
@@ -368,17 +374,18 @@ local function setIslandExpanded(exp)
 	if not islandEnabled then exp = false end
 	islandExpanded = exp
 	if exp then
-		tween(IslandPill, 0.36, { Size = UDim2.fromOffset(360, 96) }, Enum.EasingStyle.Back)
-		new("UICorner", { CornerRadius = UDim.new(0, 22), Parent = IslandPill })
+		tween(IslandPill, 0.42, { Size = UDim2.fromOffset(376, 98) }, Enum.EasingStyle.Back)
+		tween(IslandCorner, 0.35, { CornerRadius = UDim.new(0, 22) })
 	else
-		tween(IslandPill, 0.32, { Size = UDim2.fromOffset(186, 34) }, Enum.EasingStyle.Quint)
+		tween(IslandPill, 0.36, { Size = UDim2.fromOffset(196, 36) }, Enum.EasingStyle.Quint)
+		tween(IslandCorner, 0.32, { CornerRadius = UDim.new(0, 18) })
 	end
 end
 
 local IslandHit = new("TextButton", {
 	Text = "",
 	BackgroundTransparency = 1,
-	Size = UDim2.new(1, 0, 0, 34),
+	Size = UDim2.new(1, 0, 0, 36),
 	ZIndex = 3,
 	Parent = IslandPill,
 })
@@ -393,22 +400,86 @@ local function islandPulse(titleText, subText, holdSec)
 	IslandTitle.Text = titleText
 	if subText then IslandSub.Text = subText end
 	if not islandExpanded then
-		tween(IslandPill, 0.28, { Size = UDim2.fromOffset(268, 36) }, Enum.EasingStyle.Back)
+		tween(IslandPill, 0.32, { Size = UDim2.fromOffset(278, 38) }, Enum.EasingStyle.Back)
 	end
 	task.delay(holdSec or 2.2, function()
 		if token == islandPulseToken and not islandExpanded then
 			IslandTitle.Text = "GIGACHAD ISLAND"
-			tween(IslandPill, 0.28, { Size = UDim2.fromOffset(186, 34) }, Enum.EasingStyle.Quint)
+			tween(IslandPill, 0.32, { Size = UDim2.fromOffset(196, 36) }, Enum.EasingStyle.Quint)
 		end
 	end)
 end
+
+-- // Radar HUD -----------------------------------------------------------
+local RadarFrame = new("Frame", {
+	Visible = false,
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -18, 1, -18),
+	Size = UDim2.fromOffset(156, 156),
+	BackgroundColor3 = Theme.Window,
+	BackgroundTransparency = 0.08,
+	BorderSizePixel = 0,
+	ZIndex = 40,
+	Parent = Gui,
+})
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = RadarFrame })
+new("UIStroke", { Color = Theme.Stroke, Transparency = 0.88, Thickness = 1.2, Parent = RadarFrame })
+
+local RadarCrossH = new("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(1, -18, 0, 1),
+	BackgroundColor3 = Theme.Stroke,
+	BackgroundTransparency = 0.94,
+	BorderSizePixel = 0,
+	Parent = RadarFrame,
+})
+local RadarCrossV = new("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0, 1, 1, -18),
+	BackgroundColor3 = Theme.Stroke,
+	BackgroundTransparency = 0.94,
+	BorderSizePixel = 0,
+	Parent = RadarFrame,
+})
+local RadarSelfDot = new("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(7, 7),
+	BackgroundColor3 = Accent,
+	BorderSizePixel = 0,
+	ZIndex = 3,
+	Parent = RadarFrame,
+})
+new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = RadarSelfDot })
+trackAccent(RadarSelfDot, "BackgroundColor3")
+
+local RadarDotsFolder = new("Frame", {
+	BackgroundTransparency = 1,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 2,
+	Parent = RadarFrame,
+})
+
+local RadarTitle = new("TextLabel", {
+	BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -8),
+	Size = UDim2.new(1, -20, 0, 12),
+	Font = Enum.Font.GothamBold,
+	TextSize = 8.5,
+	TextColor3 = Theme.TextFaint,
+	Text = "RADAR",
+	Parent = RadarFrame,
+})
 
 -- // Notifications (iOS banners) -----------------------------------------
 local NotifHolder = new("Frame", {
 	BackgroundTransparency = 1,
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 52),
-	Size = UDim2.fromOffset(380, 600),
+	Position = UDim2.new(0.5, 0, 0, 54),
+	Size = UDim2.fromOffset(400, 600),
 	ZIndex = 50,
 	Parent = Gui,
 })
@@ -419,7 +490,7 @@ local function layoutNotifs(animate)
 	for _, n in ipairs(notifs) do
 		local target = UDim2.fromOffset(0, y)
 		if animate then
-			tween(n.frame, 0.4, { Position = target }, Enum.EasingStyle.Back)
+			tween(n.frame, 0.42, { Position = target }, Enum.EasingStyle.Back)
 		else
 			n.frame.Position = target
 		end
@@ -512,8 +583,8 @@ local function Notify(title, message, duration)
 	end)
 end
 
--- // Window shell --------------------------------------------------------
-local WINDOW_W, WINDOW_H = 590, 412
+-- // Window shell (larger & more comfortable) ----------------------------
+local WINDOW_W, WINDOW_H = 680, 460
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local UIScaleValue = 1
 if IsMobile then
@@ -525,7 +596,7 @@ local WinW, WinH = WINDOW_W * UIScaleValue, WINDOW_H * UIScaleValue
 local Holder = new("Frame", {
 	BackgroundTransparency = 1,
 	Size = UDim2.fromOffset(WINDOW_W, WINDOW_H),
-	Position = UDim2.fromOffset((Viewport.X - WinW) / 2, math.max((Viewport.Y - WinH) / 2, 54)),
+	Position = UDim2.fromOffset((Viewport.X - WinW) / 2, math.max((Viewport.Y - WinH) / 2, 56)),
 	Parent = Gui,
 })
 new("UIScale", { Scale = UIScaleValue, Parent = Holder })
@@ -537,9 +608,9 @@ local Shadow = new("ImageLabel", {
 	ImageTransparency = 1,
 	ScaleType = Enum.ScaleType.Slice,
 	SliceCenter = Rect.new(49, 49, 450, 450),
-	SliceScale = 1.25,
-	Size = UDim2.new(1, 90, 1, 90),
-	Position = UDim2.fromOffset(-45, -45),
+	SliceScale = 1.28,
+	Size = UDim2.new(1, 96, 1, 96),
+	Position = UDim2.fromOffset(-48, -48),
 	Parent = Holder,
 })
 
@@ -552,13 +623,13 @@ local Window = new("CanvasGroup", {
 	ClipsDescendants = true,
 	Parent = Holder,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 26), Parent = Window })
+new("UICorner", { CornerRadius = UDim.new(0, 28), Parent = Window })
 new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Thickness = 1, Parent = Window })
-local WindowScale = new("UIScale", { Scale = 0.9, Parent = Window })
+local WindowScale = new("UIScale", { Scale = 0.92, Parent = Window })
 
 local TopLine = new("Frame", {
 	BackgroundColor3 = Accent,
-	BackgroundTransparency = 0.55,
+	BackgroundTransparency = 0.5,
 	BorderSizePixel = 0,
 	Size = UDim2.new(1, 0, 0, 2),
 	ZIndex = 3,
@@ -566,20 +637,20 @@ local TopLine = new("Frame", {
 })
 trackAccent(TopLine, "BackgroundColor3")
 
--- // Header (status bar + quick filter) ----------------------------------
+-- // Header (status bar) -------------------------------------------------
 local Header = new("Frame", {
 	BackgroundTransparency = 1,
-	Size = UDim2.new(1, 0, 0, 48),
+	Size = UDim2.new(1, 0, 0, 52),
 	ZIndex = 2,
 	Parent = Window,
 })
 
 local TimeLabel = new("TextLabel", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(18, 0),
-	Size = UDim2.new(0, 100, 1, 0),
+	Position = UDim2.fromOffset(22, 0),
+	Size = UDim2.new(0, 110, 1, 0),
 	Font = Enum.Font.GothamBold,
-	TextSize = 14,
+	TextSize = 14.5,
 	TextColor3 = Theme.TextMain,
 	TextXAlignment = Enum.TextXAlignment.Left,
 	Text = "9:41",
@@ -589,18 +660,18 @@ local TimeLabel = new("TextLabel", {
 local BrandPill = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(194, 30),
+	Size = UDim2.fromOffset(208, 32),
 	BackgroundColor3 = Theme.Surface,
 	BorderSizePixel = 0,
 	Parent = Header,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 15), Parent = BrandPill })
+new("UICorner", { CornerRadius = UDim.new(0, 16), Parent = BrandPill })
 new("UIStroke", { Color = Theme.Stroke, Transparency = 0.9, Parent = BrandPill })
 
 local StatusDot = new("Frame", {
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.fromOffset(10, 15),
-	Size = UDim2.fromOffset(6, 6),
+	Position = UDim2.fromOffset(11, 16),
+	Size = UDim2.fromOffset(6.5, 6.5),
 	BackgroundColor3 = Theme.Success,
 	BorderSizePixel = 0,
 	Parent = BrandPill,
@@ -609,10 +680,10 @@ new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = StatusDot })
 
 local BrandText = new("TextLabel", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(16, 0),
-	Size = UDim2.new(1, -22, 1, 0),
+	Position = UDim2.fromOffset(18, 0),
+	Size = UDim2.new(1, -24, 1, 0),
 	Font = Enum.Font.GothamBold,
-	TextSize = 11.5,
+	TextSize = 12,
 	TextColor3 = Theme.TextMain,
 	RichText = true,
 	Text = string.format('GIGACHAD <font color="%s">GARAGE</font>', toHex(Accent)),
@@ -625,10 +696,10 @@ end
 local FpsLabel = new("TextLabel", {
 	BackgroundTransparency = 1,
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -18, 0, 0),
-	Size = UDim2.new(0, 145, 1, 0),
+	Position = UDim2.new(1, -22, 0, 0),
+	Size = UDim2.new(0, 155, 1, 0),
 	Font = Enum.Font.Gotham,
-	TextSize = 11,
+	TextSize = 11.5,
 	TextColor3 = Theme.TextDim,
 	TextXAlignment = Enum.TextXAlignment.Right,
 	Text = "60 FPS  •  0 ms",
@@ -644,11 +715,11 @@ new("Frame", {
 	Parent = Header,
 })
 
--- // Search bar inside Content top ---------------------------------------
+-- // Search bar with clear button ----------------------------------------
 local SearchBarWrap = new("Frame", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(0, 48),
-	Size = UDim2.new(1, 0, 0, 42),
+	Position = UDim2.fromOffset(0, 52),
+	Size = UDim2.new(1, 0, 0, 46),
 	ZIndex = 3,
 	Parent = Window,
 })
@@ -656,27 +727,44 @@ local SearchBarWrap = new("Frame", {
 local SearchBox = new("TextBox", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.new(1, -28, 0, 30),
+	Size = UDim2.new(1, -36, 0, 34),
 	BackgroundColor3 = Theme.Surface,
 	BorderSizePixel = 0,
 	Font = Enum.Font.Gotham,
-	TextSize = 12,
+	TextSize = 12.5,
 	TextColor3 = Theme.TextMain,
-	PlaceholderText = "Search features in current tab...",
+	PlaceholderText = "Search features across current tab...",
 	PlaceholderColor3 = Theme.TextFaint,
 	Text = "",
 	ClearTextOnFocus = false,
 	Parent = SearchBarWrap,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 10), Parent = SearchBox })
+new("UICorner", { CornerRadius = UDim.new(0, 11), Parent = SearchBox })
 new("UIStroke", { Color = Theme.Stroke, Transparency = 0.92, Parent = SearchBox })
-new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = SearchBox })
+new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 34), Parent = SearchBox })
+
+local ClearSearchBtn = new("TextButton", {
+	Text = "✕",
+	Font = Enum.Font.GothamBold,
+	TextSize = 12,
+	TextColor3 = Theme.TextDim,
+	BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -24, 0.5, 0),
+	Size = UDim2.fromOffset(24, 24),
+	Visible = false,
+	ZIndex = 4,
+	Parent = SearchBarWrap,
+})
+ClearSearchBtn.Activated:Connect(function()
+	SearchBox.Text = ""
+end)
 
 -- // Content + Tab bar ---------------------------------------------------
 local Content = new("Frame", {
 	BackgroundTransparency = 1,
-	Position = UDim2.fromOffset(0, 90),
-	Size = UDim2.new(1, 0, 1, -146),
+	Position = UDim2.fromOffset(0, 98),
+	Size = UDim2.new(1, 0, 1, -158),
 	ClipsDescendants = true,
 	ZIndex = 2,
 	Parent = Window,
@@ -685,8 +773,8 @@ local Content = new("Frame", {
 local TabBar = new("Frame", {
 	BackgroundColor3 = Theme.TabBar,
 	BorderSizePixel = 0,
-	Position = UDim2.new(0, 0, 1, -56),
-	Size = UDim2.new(1, 0, 0, 56),
+	Position = UDim2.new(0, 0, 1, -60),
+	Size = UDim2.new(1, 0, 0, 60),
 	ZIndex = 2,
 	Parent = Window,
 })
@@ -701,16 +789,16 @@ new("Frame", {
 local Pill = new("Frame", {
 	BackgroundColor3 = Theme.SurfaceAlt,
 	BorderSizePixel = 0,
-	Size = UDim2.fromOffset(52, 36),
+	Size = UDim2.fromOffset(62, 40),
 	Position = UDim2.fromOffset(32, 10),
 	ZIndex = 1,
 	Parent = TabBar,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 11), Parent = Pill })
+new("UICorner", { CornerRadius = UDim.new(0, 12), Parent = Pill })
 local PillAccentLine = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -3),
-	Size = UDim2.fromOffset(18, 2),
+	Size = UDim2.fromOffset(22, 2.5),
 	BackgroundColor3 = Accent,
 	BorderSizePixel = 0,
 	Parent = Pill,
@@ -774,6 +862,7 @@ local pageItems   = { {}, {}, {}, {}, {} }
 
 local function applySearchFilter()
 	local q = string.lower((SearchBox.Text or ""):match("^%s*(.-)%s*$") or "")
+	ClearSearchBtn.Visible = q ~= ""
 	for pIdx = 1, 5 do
 		for _, entry in ipairs(pageItems[pIdx]) do
 			if q == "" then
@@ -800,17 +889,17 @@ for i = 1, 5 do
 	local iconHolder = new("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 8),
+		Position = UDim2.new(0.5, 0, 0, 9),
 		Size = UDim2.fromOffset(17, 17),
 		Parent = btn,
 	})
 	local parts, strokes = buildIcon(TAB_ICONS[i], iconHolder, Theme.TextDim)
 	local label = new("TextLabel", {
 		BackgroundTransparency = 1,
-		Position = UDim2.new(0, 0, 0, 28),
-		Size = UDim2.new(1, 0, 0, 10),
+		Position = UDim2.new(0, 0, 0, 30),
+		Size = UDim2.new(1, 0, 0, 11),
 		Font = Enum.Font.GothamMedium,
-		TextSize = 9,
+		TextSize = 9.5,
 		TextColor3 = Theme.TextDim,
 		Text = TAB_NAMES[i]:upper(),
 		Parent = btn,
@@ -829,17 +918,17 @@ for i = 1, 5 do
 		Size = UDim2.fromScale(1, 1),
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 2,
+		ScrollBarThickness = 3,
 		ScrollBarImageTransparency = 0.25,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ElasticBehavior = Enum.ElasticBehavior.WhenScrollable,
 		Parent = page,
 	})
 	trackAccent(scroll, "ScrollBarImageColor3")
-	new("UIListLayout", { Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder, Parent = scroll })
+	new("UIListLayout", { Padding = UDim.new(0, 14), SortOrder = Enum.SortOrder.LayoutOrder, Parent = scroll })
 	new("UIPadding", {
-		PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 14),
-		PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14),
+		PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 16),
+		PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18),
 		Parent = scroll,
 	})
 	pages[i] = page
@@ -848,10 +937,11 @@ end
 
 local function computePillX(i)
 	local cellW = WINDOW_W / 5
-	return math.floor((i - 1) * cellW + (cellW - 52) / 2)
+	return math.floor((i - 1) * cellW + (cellW - 62) / 2)
 end
 
 local activeTab = 0
+local tabToken = 0
 local function setTabColors(i, activeState)
 	local tab = tabButtons[i]
 	local c = activeState and Theme.White or Theme.TextDim
@@ -864,8 +954,10 @@ local function selectTab(i)
 	if i == activeTab then return end
 	local prev = activeTab
 	activeTab = i
+	tabToken += 1
+	local currentToken = tabToken
 
-	tween(Pill, 0.4, { Position = UDim2.fromOffset(computePillX(i), 10) }, Enum.EasingStyle.Back)
+	tween(Pill, 0.44, { Position = UDim2.fromOffset(computePillX(i), 10) }, Enum.EasingStyle.Back)
 
 	for idx = 1, 5 do setTabColors(idx, idx == i) end
 
@@ -873,16 +965,18 @@ local function selectTab(i)
 	local oldPage = pages[prev]
 	local newPage = pages[i]
 
-	if oldPage then
-		tween(oldPage, 0.15, { Position = UDim2.fromOffset(-12 * dir, 0) })
-		task.delay(0.16, function()
-			if activeTab ~= prev then oldPage.Visible = false end
+	if oldPage and oldPage.Visible then
+		tween(oldPage, 0.22, { Position = UDim2.fromOffset(-22 * dir, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		task.delay(0.23, function()
+			if tabToken == currentToken and activeTab ~= prev then
+				oldPage.Visible = false
+			end
 		end)
 	end
 
 	newPage.Visible = true
-	newPage.Position = UDim2.fromOffset(14 * dir, 0)
-	tween(newPage, 0.3, { Position = UDim2.fromOffset(0, 0) })
+	newPage.Position = UDim2.fromOffset(26 * dir, 0)
+	tween(newPage, 0.38, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 end
 
 for i = 1, 5 do
@@ -900,6 +994,7 @@ do
 			dragging = true
 			startMouse = Vector2.new(io.Position.X, io.Position.Y)
 			startPos = Vector2.new(Holder.Position.X.Offset, Holder.Position.Y.Offset)
+			lastMouse = startMouse
 		end
 	end)
 	bind(UserInputService.InputChanged, function(io)
@@ -912,19 +1007,20 @@ do
 			dragging = false
 		end
 	end)
-	bind(RunService.RenderStepped, function()
+	bind(RunService.RenderStepped, function(dt)
 		if dragging and startMouse and lastMouse then
 			local t = startPos + (lastMouse - startMouse)
 			dragTarget = Vector2.new(
-				math.clamp(t.X, -WinW * 0.5 + 10, Viewport.X - WinW * 0.5 - 10),
-				math.clamp(t.Y, 44, Viewport.Y - 30)
+				math.clamp(t.X, -WinW * 0.5 + 12, Viewport.X - WinW * 0.5 - 12),
+				math.clamp(t.Y, 54, Viewport.Y - 36)
 			)
 		end
 		if dragTarget then
 			local p = Holder.Position
-			local nx = p.X.Offset + (dragTarget.X - p.X.Offset) * 0.4
-			local ny = p.Y.Offset + (dragTarget.Y - p.Y.Offset) * 0.4
-			if not dragging and math.abs(dragTarget.X - nx) < 0.5 and math.abs(dragTarget.Y - ny) < 0.5 then
+			local nx = damp(p.X.Offset, dragTarget.X, 18, dt)
+			local ny = damp(p.Y.Offset, dragTarget.Y, 18, dt)
+			if not dragging and math.abs(dragTarget.X - nx) < 0.4 and math.abs(dragTarget.Y - ny) < 0.4 then
+				nx, ny = dragTarget.X, dragTarget.Y
 				dragTarget = nil
 			end
 			Holder.Position = UDim2.fromOffset(nx, ny)
@@ -944,14 +1040,14 @@ local function Section(pageIndex, title)
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = cardList,
 	})
-	new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = holder })
+	new("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder, Parent = holder })
 
 	local labelWrap = new("Frame", {
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 14),
+		Size = UDim2.new(1, 0, 0, 15),
 		Parent = holder,
 	})
-	new("UIPadding", { PaddingLeft = UDim.new(0, 16), Parent = labelWrap })
+	new("UIPadding", { PaddingLeft = UDim.new(0, 18), Parent = labelWrap })
 	new("TextLabel", {
 		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0),
 		Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = Theme.TextFaint,
@@ -966,12 +1062,12 @@ local function Section(pageIndex, title)
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = holder,
 	})
-	new("UICorner", { CornerRadius = UDim.new(0, 16), Parent = card })
+	new("UICorner", { CornerRadius = UDim.new(0, 18), Parent = card })
 	new("UIStroke", { Color = Theme.Stroke, Transparency = 0.93, Parent = card })
 	new("UIListLayout", { Padding = UDim.new(0, 0), SortOrder = Enum.SortOrder.LayoutOrder, Parent = card })
 	new("UIPadding", {
 		PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10),
-		PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16),
+		PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18),
 		Parent = card,
 	})
 
@@ -1009,12 +1105,12 @@ local function Section(pageIndex, title)
 
 		local row = new("TextButton", {
 			Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-			Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
+			Size = UDim2.new(1, 0, 0, 48), Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0),
-			Size = UDim2.new(1, -64, 1, 0),
-			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
+			Size = UDim2.new(1, -68, 1, 0),
+			Font = Enum.Font.GothamMedium, TextSize = 14.5, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Text = cfg.text, Parent = row,
@@ -1023,7 +1119,7 @@ local function Section(pageIndex, title)
 		local track = new("Frame", {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, 0, 0.5, 0),
-			Size = UDim2.fromOffset(50, 30),
+			Size = UDim2.fromOffset(52, 31),
 			BackgroundColor3 = Color3.fromRGB(120, 120, 128),
 			BackgroundTransparency = 0.55,
 			BorderSizePixel = 0,
@@ -1032,7 +1128,7 @@ local function Section(pageIndex, title)
 		new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = track })
 
 		local knob = new("Frame", {
-			Position = UDim2.fromOffset(2, 2),
+			Position = UDim2.fromOffset(2, 2.5),
 			Size = UDim2.fromOffset(26, 26),
 			BackgroundColor3 = Theme.White,
 			BorderSizePixel = 0,
@@ -1048,13 +1144,13 @@ local function Section(pageIndex, title)
 		end
 
 		local function render(instant)
-			local targetX = state and 22 or 2
+			local targetX = state and 24 or 2
 			if instant then
-				knob.Position = UDim2.fromOffset(targetX, 2)
+				knob.Position = UDim2.fromOffset(targetX, 2.5)
 			else
-				knobScale.Scale = 0.82
-				tween(knobScale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
-				tween(knob, 0.35, { Position = UDim2.fromOffset(targetX, 2) }, Enum.EasingStyle.Back)
+				knobScale.Scale = 0.84
+				tween(knobScale, 0.36, { Scale = 1 }, Enum.EasingStyle.Back)
+				tween(knob, 0.36, { Position = UDim2.fromOffset(targetX, 2.5) }, Enum.EasingStyle.Back)
 			end
 			track.BackgroundColor3 = state and Accent or Color3.fromRGB(120, 120, 128)
 			track.BackgroundTransparency = state and 0 or 0.55
@@ -1094,20 +1190,20 @@ local function Section(pageIndex, title)
 
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 62),
+			Size = UDim2.new(1, 0, 0, 66),
 			Parent = itemWrap,
 		})
 		new("TextLabel", {
-			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 7),
-			Size = UDim2.new(1, -80, 0, 14),
-			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 8),
+			Size = UDim2.new(1, -86, 0, 15),
+			Font = Enum.Font.GothamMedium, TextSize = 14.5, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Text = cfg.text, Parent = row,
 		})
 		local valueLabel = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 7), Size = UDim2.new(0, 80, 0, 14),
+			Position = UDim2.new(1, 0, 0, 8), Size = UDim2.new(0, 86, 0, 15),
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Theme.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			Text = "", Parent = row,
@@ -1115,14 +1211,14 @@ local function Section(pageIndex, title)
 
 		local hit = new("Frame", {
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(0, 29),
-			Size = UDim2.new(1, 0, 0, 30),
+			Position = UDim2.fromOffset(0, 31),
+			Size = UDim2.new(1, 0, 0, 32),
 			Parent = row,
 		})
 		local trackBg = new("Frame", {
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.new(1, 0, 0, 5),
+			Size = UDim2.new(1, 0, 0, 5.5),
 			BackgroundColor3 = Theme.White,
 			BackgroundTransparency = 0.9,
 			BorderSizePixel = 0,
@@ -1141,7 +1237,7 @@ local function Section(pageIndex, title)
 		local knob = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.fromOffset(21, 21),
+			Size = UDim2.fromOffset(22, 22),
 			BackgroundColor3 = Theme.White,
 			BorderSizePixel = 0,
 			Parent = hit,
@@ -1152,6 +1248,7 @@ local function Section(pageIndex, title)
 		local min, max = cfg.min or 0, cfg.max or 100
 		local step = cfg.step or 1
 		local val = cfg.default or min
+		local targetAlpha = (max ~= min) and ((val - min) / (max - min)) or 0
 		local dragging = false
 
 		local function setValue(v, fire)
@@ -1159,9 +1256,9 @@ local function Section(pageIndex, title)
 			v = min + math.floor((v - min) / step + 0.5) * step
 			v = tonumber(string.format("%.2f", v))
 			val = v
-			local alpha = (max ~= min) and ((v - min) / (max - min)) or 0
-			fill.Size = UDim2.fromScale(alpha, 1)
-			knob.Position = UDim2.new(alpha, 0, 0.5, 0)
+			targetAlpha = (max ~= min) and ((v - min) / (max - min)) or 0
+			fill.Size = UDim2.fromScale(targetAlpha, 1)
+			knob.Position = UDim2.new(targetAlpha, 0, 0.5, 0)
 			valueLabel.Text = tostring(v):gsub("%.00$", "") .. (cfg.suffix or "")
 			if fire and cfg.callback then cfg.callback(v) end
 		end
@@ -1212,13 +1309,13 @@ local function Section(pageIndex, title)
 		if cfg.style == "filled" or cfg.style == "danger" then
 			local wrap = new("Frame", {
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, 0, 0, 52),
+				Size = UDim2.new(1, 0, 0, 56),
 				Parent = itemWrap,
 			})
-			new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), Parent = wrap })
+			new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), Parent = wrap })
 			local btn = new("TextButton", {
 				Text = cfg.text,
-				Font = Enum.Font.GothamBold, TextSize = 13.5, TextColor3 = Theme.White,
+				Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.White,
 				BackgroundColor3 = (cfg.style == "danger") and Theme.Danger or Accent,
 				BorderSizePixel = 0,
 				Size = UDim2.fromScale(1, 1),
@@ -1230,18 +1327,18 @@ local function Section(pageIndex, title)
 			local scale = new("UIScale", { Parent = btn })
 			btn.Activated:Connect(function()
 				tween(scale, 0.08, { Scale = 0.96 })
-				task.delay(0.08, function() tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back) end)
+				task.delay(0.08, function() tween(scale, 0.34, { Scale = 1 }, Enum.EasingStyle.Back) end)
 				if cfg.callback then cfg.callback() end
 			end)
 		else
 			local row = new("TextButton", {
 				Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-				Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
+				Size = UDim2.new(1, 0, 0, 48), Parent = itemWrap,
 			})
 			new("TextLabel", {
 				BackgroundTransparency = 1,
 				Size = UDim2.new(1, -26, 1, 0),
-				Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
+				Font = Enum.Font.GothamMedium, TextSize = 14.5, TextColor3 = Theme.TextMain,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Text = cfg.text, Parent = row,
@@ -1272,19 +1369,19 @@ local function Section(pageIndex, title)
 
 		local row = new("TextButton", {
 			Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-			Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
+			Size = UDim2.new(1, 0, 0, 48), Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
 			Size = UDim2.new(0.45, 0, 1, 0),
-			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
+			Font = Enum.Font.GothamMedium, TextSize = 14.5, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Text = cfg.text, Parent = row,
 		})
 		local valueLabel = new("TextLabel", {
 			BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -18, 0.5, 0), Size = UDim2.new(0.55, -18, 0, 16),
+			Position = UDim2.new(1, -20, 0.5, 0), Size = UDim2.new(0.55, -20, 0, 16),
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Theme.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextTruncate = Enum.TextTruncate.AtEnd,
@@ -1323,12 +1420,12 @@ local function Section(pageIndex, title)
 			for _, opt in ipairs(opts) do
 				local orow = new("TextButton", {
 					Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-					Size = UDim2.new(1, 0, 0, 32), Parent = list,
+					Size = UDim2.new(1, 0, 0, 34), Parent = list,
 				})
 				new("TextLabel", {
 					BackgroundTransparency = 1,
 					Size = UDim2.new(1, -26, 1, 0),
-					Font = Enum.Font.Gotham, TextSize = 13,
+					Font = Enum.Font.Gotham, TextSize = 13.5,
 					TextColor3 = (opt == selected) and Theme.TextMain or Theme.TextDim,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					TextTruncate = Enum.TextTruncate.AtEnd,
@@ -1349,8 +1446,8 @@ local function Section(pageIndex, title)
 				end)
 			end
 			tween(chev, 0.25, { Rotation = 180 })
-			local h = math.min(#opts * 34 + 6, 204)
-			tween(list, 0.35, { Size = UDim2.new(1, 0, 0, h) }, Enum.EasingStyle.Quart)
+			local h = math.min(#opts * 36 + 6, 218)
+			tween(list, 0.36, { Size = UDim2.new(1, 0, 0, h) }, Enum.EasingStyle.Quart)
 		end
 
 		row.Activated:Connect(function()
@@ -1381,12 +1478,12 @@ local function Section(pageIndex, title)
 
 		local row = new("TextButton", {
 			Text = "", BackgroundTransparency = 1, AutoButtonColor = false,
-			Size = UDim2.new(1, 0, 0, 44), Parent = itemWrap,
+			Size = UDim2.new(1, 0, 0, 48), Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, -110, 1, 0),
-			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
+			Size = UDim2.new(1, -120, 1, 0),
+			Font = Enum.Font.GothamMedium, TextSize = 14.5, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Text = cfg.text, Parent = row,
@@ -1398,13 +1495,13 @@ local function Section(pageIndex, title)
 			BackgroundColor3 = Theme.SurfaceAlt,
 			BorderSizePixel = 0,
 			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.new(0, 0, 0, 26),
+			Size = UDim2.new(0, 0, 0, 28),
 			Parent = row,
 		})
 		new("UICorner", { CornerRadius = UDim.new(0, 9), Parent = badge })
 		local stroke = new("UIStroke", { Color = Accent, Transparency = 1, Parent = badge })
 		trackAccent(stroke, "Color")
-		new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = badge })
+		new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = badge })
 		local keyText = new("TextLabel", {
 			BackgroundTransparency = 1,
 			AutomaticSize = Enum.AutomaticSize.X,
@@ -1463,13 +1560,13 @@ local function Section(pageIndex, title)
 
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 48),
+			Size = UDim2.new(1, 0, 0, 52),
 			Parent = itemWrap,
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, -180, 1, 0),
-			Font = Enum.Font.GothamMedium, TextSize = 14, TextColor3 = Theme.TextMain,
+			Size = UDim2.new(1, -200, 1, 0),
+			Font = Enum.Font.GothamMedium, TextSize = 14.5, TextColor3 = Theme.TextMain,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Text = cfg.text, Parent = row,
 		})
@@ -1477,11 +1574,11 @@ local function Section(pageIndex, title)
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, 0, 0.5, 0),
-			Size = UDim2.new(0, 6 * 22 + 5 * 8, 0, 24),
+			Size = UDim2.new(0, 6 * 24 + 5 * 10, 0, 26),
 			Parent = row,
 		})
 		new("UIListLayout", {
-			Padding = UDim.new(0, 8),
+			Padding = UDim.new(0, 10),
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Right,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -1498,12 +1595,12 @@ local function Section(pageIndex, title)
 				Text = "", BackgroundTransparency = 0,
 				BackgroundColor3 = acc.color,
 				BorderSizePixel = 0,
-				Size = UDim2.fromOffset(22, 22),
+				Size = UDim2.fromOffset(24, 24),
 				AutoButtonColor = false,
 				Parent = holder,
 			})
 			new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = sw })
-			local ring = new("UIStroke", { Color = Theme.White, Thickness = 1.6, Transparency = 1, Parent = sw })
+			local ring = new("UIStroke", { Color = Theme.White, Thickness = 1.8, Transparency = 1, Parent = sw })
 			swatches[#swatches + 1] = { btn = sw, ring = ring, acc = acc }
 
 			sw.Activated:Connect(function()
@@ -1533,7 +1630,7 @@ local function Section(pageIndex, title)
 
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 40),
+			Size = UDim2.new(1, 0, 0, 42),
 			Parent = itemWrap,
 		})
 		new("TextLabel", {
@@ -1561,7 +1658,7 @@ local function Section(pageIndex, title)
 		self.count += 1
 		local row = new("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 26),
+			Size = UDim2.new(1, 0, 0, 28),
 			Parent = self.card,
 		})
 		new("TextLabel", {
@@ -1590,18 +1687,21 @@ local State = {
 	WalkSpeed   = BaseWS,
 	JumpPower   = BaseJP,
 	InfJump     = false,
+	BunnyHop    = false,
 	Noclip      = false,
 	Fly         = false,
 	FlySpeed    = 60,
 	SpinBot     = false,
 	SpinSpeed   = 18,
 	FloatMode   = false,
+	WalkWater   = false,
 	ClickTP     = false,
 	AntiAFK     = true,
 	NoFog       = false,
 	Xray        = false,
 	Freecam     = false,
 	FreecamSpd  = 45,
+	Spectating  = false,
 	Aimbot = {
 		Enabled     = false,
 		HoldRMB     = true,
@@ -1668,6 +1768,9 @@ task.spawn(function()
 			if State.JumpPower ~= BaseJP and math.floor(hum.JumpPower + 0.5) ~= State.JumpPower then
 				pcall(function() hum.JumpPower = State.JumpPower end)
 			end
+			if State.BunnyHop and hum.MoveDirection.Magnitude > 0.1 and hum.FloorMaterial ~= Enum.Material.Air then
+				hum:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
 		end
 	end
 end)
@@ -1679,8 +1782,9 @@ bind(UserInputService.JumpRequest, function()
 	end
 end)
 
--- // Noclip, Float & SpinBot ---------------------------------------------
+-- // Noclip, Float, WalkWater & SpinBot ----------------------------------
 local floatPart = nil
+local waterPart = nil
 bind(RunService.Stepped, function()
 	if State.Noclip then
 		local char = getChar()
@@ -1695,7 +1799,7 @@ bind(RunService.Stepped, function()
 		if not floatPart or not floatPart.Parent then
 			floatPart = new("Part", {
 				Name = "GCG_FloatPart",
-				Size = Vector3.new(5, 0.5, 5),
+				Size = Vector3.new(5.5, 0.5, 5.5),
 				Anchored = true,
 				Transparency = 0.85,
 				CanCollide = true,
@@ -1709,6 +1813,35 @@ bind(RunService.Stepped, function()
 	elseif floatPart then
 		floatPart:Destroy()
 		floatPart = nil
+	end
+
+	if State.WalkWater and hrp then
+		local rayParams = RaycastParams.new()
+		rayParams.FilterType = Enum.RaycastFilterType.Include
+		rayParams.FilterDescendantsInstances = { workspace.Terrain }
+		local hit = workspace:Raycast(hrp.Position + Vector3.new(0, 2, 0), Vector3.new(0, -14, 0), rayParams)
+		if hit and hit.Material == Enum.Material.Water then
+			if not waterPart or not waterPart.Parent then
+				waterPart = new("Part", {
+					Name = "GCG_WaterWalkPart",
+					Size = Vector3.new(12, 0.6, 12),
+					Anchored = true,
+					Transparency = 0.8,
+					CanCollide = true,
+					Material = Enum.Material.Glass,
+					Color = Accent,
+					Parent = Gui,
+				})
+				trackAccent(waterPart, "Color")
+			end
+			waterPart.CFrame = CFrame.new(hrp.Position.X, hit.Position.Y - 0.1, hrp.Position.Z)
+		elseif waterPart then
+			waterPart:Destroy()
+			waterPart = nil
+		end
+	elseif waterPart then
+		waterPart:Destroy()
+		waterPart = nil
 	end
 end)
 
@@ -1810,6 +1943,66 @@ local function getAimTarget()
 	return bestPart
 end
 
+-- // Radar update loop ---------------------------------------------------
+local radarDots = {}
+local function updateRadar()
+	if not radarEnabled then
+		RadarFrame.Visible = false
+		return
+	end
+	RadarFrame.Visible = true
+	local myHRP = getHRP()
+	if not myHRP then return end
+
+	local activePlrs = {}
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			activePlrs[plr] = true
+			local dot = radarDots[plr]
+			if not dot then
+				dot = new("Frame", {
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Size = UDim2.fromOffset(6, 6),
+					BackgroundColor3 = Theme.Danger,
+					BorderSizePixel = 0,
+					Parent = RadarDotsFolder,
+				})
+				new("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
+				radarDots[plr] = dot
+			end
+
+			local tHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+			local tHum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+			if tHRP and tHum and tHum.Health > 0 then
+				local sameTeam = State.ESP.TeamCheck and plr.Team ~= nil and LocalPlayer.Team ~= nil and plr.Team == LocalPlayer.Team
+				dot.BackgroundColor3 = sameTeam and Theme.Success or Theme.Danger
+
+				local offset = tHRP.Position - myHRP.Position
+				local _, camYaw = Camera.CFrame:ToOrientation()
+				local cosY, sinY = math.cos(camYaw), math.sin(camYaw)
+				local rx = offset.X * cosY - offset.Z * sinY
+				local rz = offset.X * sinY + offset.Z * cosY
+
+				local range = 140
+				local radiusPx = 62
+				local nx = math.clamp((rx / range) * radiusPx, -radiusPx, radiusPx)
+				local ny = math.clamp((rz / range) * radiusPx, -radiusPx, radiusPx)
+				dot.Position = UDim2.new(0.5, nx, 0.5, ny)
+				dot.Visible = true
+			else
+				dot.Visible = false
+			end
+		end
+	end
+
+	for plr, dot in pairs(radarDots) do
+		if not activePlrs[plr] then
+			dot:Destroy()
+			radarDots[plr] = nil
+		end
+	end
+end
+
 bind(RunService.RenderStepped, function()
 	local vp = Camera.ViewportSize
 	local center = Vector2.new(vp.X * 0.5, vp.Y * 0.5)
@@ -1820,7 +2013,7 @@ bind(RunService.RenderStepped, function()
 	end
 
 	local activeAim = State.Aimbot.Enabled and (not State.Aimbot.HoldRMB or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
-	if activeAim and not State.Freecam then
+	if activeAim and not State.Freecam and not State.Spectating then
 		local target = getAimTarget()
 		if target then
 			local currentCF = Camera.CFrame
@@ -1832,21 +2025,46 @@ bind(RunService.RenderStepped, function()
 			end
 		end
 	end
+
+	updateRadar()
 end)
 
--- // Freecam -------------------------------------------------------------
+-- // Freecam & Spectate --------------------------------------------------
 local freecamCF = nil
 local function setFreecam(on)
 	State.Freecam = on
 	local hum = getHum()
 	if on then
+		State.Spectating = false
 		freecamCF = Camera.CFrame
 		Camera.CameraType = Enum.CameraType.Scriptable
 		if hum then hum.WalkSpeed = 0 end
 	else
-		Camera.CameraType = Enum.CameraType.Custom
+		if not State.Spectating then
+			Camera.CameraType = Enum.CameraType.Custom
+		end
 		freecamCF = nil
 		if hum then hum.WalkSpeed = State.WalkSpeed end
+	end
+end
+
+local function setSpectate(on, targetName)
+	local hum = getHum()
+	if on then
+		local plr = targetName and Players:FindFirstChild(targetName)
+		local tHum = plr and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+		if tHum then
+			State.Spectating = true
+			Camera.CameraType = Enum.CameraType.Custom
+			Camera.CameraSubject = tHum
+			Notify("Spectate", "Watching " .. plr.DisplayName)
+		else
+			Notify("Spectate", "Select a valid player first")
+		end
+	else
+		State.Spectating = false
+		Camera.CameraType = Enum.CameraType.Custom
+		if hum then Camera.CameraSubject = hum end
 	end
 end
 
@@ -2275,6 +2493,7 @@ secMove:Button({
 
 local secAbil = Section(1, "Abilities")
 secAbil:Toggle({ text = "Infinite Jump", default = false, callback = function(v) State.InfJump = v end })
+secAbil:Toggle({ text = "BunnyHop (Auto-Jump)", default = false, callback = function(v) State.BunnyHop = v end })
 local tNoclip = secAbil:Toggle({ text = "Noclip", default = false, callback = function(v) State.Noclip = v end })
 local tFly = secAbil:Toggle({
 	text = "Fly",
@@ -2286,6 +2505,7 @@ local tFly = secAbil:Toggle({
 })
 secAbil:Slider({ text = "Fly Speed", min = 10, max = 220, default = 60, callback = function(v) State.FlySpeed = v end })
 secAbil:Toggle({ text = "Float Platform", default = false, callback = function(v) State.FloatMode = v end })
+secAbil:Toggle({ text = "Walk on Water", default = false, callback = function(v) State.WalkWater = v end })
 secAbil:Toggle({ text = "SpinBot", default = false, callback = function(v) State.SpinBot = v end })
 secAbil:Slider({ text = "Spin Speed", min = 1, max = 60, default = 18, callback = function(v) State.SpinSpeed = v end })
 
@@ -2335,7 +2555,7 @@ secAim:Slider({
 	callback = function(v) State.Aimbot.Smoothness = v end,
 })
 
-local secESP = Section(2, "Player ESP")
+local secESP = Section(2, "Player ESP & Radar")
 secESP:Toggle({
 	text = "Player Highlights",
 	default = false,
@@ -2343,6 +2563,15 @@ secESP:Toggle({
 		State.ESP.Master = v
 		if v then espRefresh() else espClearAll() end
 		Notify("Visuals", v and "Player ESP enabled" or "Player ESP disabled")
+	end,
+})
+secESP:Toggle({
+	text = "Radar HUD",
+	default = false,
+	callback = function(v)
+		radarEnabled = v
+		RadarFrame.Visible = v
+		Notify("Radar", v and "Radar HUD enabled" or "Radar HUD hidden")
 	end,
 })
 secESP:Toggle({ text = "Names", default = true, callback = function(v) State.ESP.Names = v end })
@@ -2359,7 +2588,7 @@ secESP:Toggle({
 		State.ESP.Tracers = v
 	end,
 })
-secESP:Toggle({ text = "ESP Team Check", default = true, callback = function(v) State.ESP.TeamCheck = v end })
+secESP:Toggle({ text = "ESP & Radar Team Check", default = true, callback = function(v) State.ESP.TeamCheck = v end })
 
 local secWorld = Section(2, "World & Lighting")
 secWorld:Toggle({ text = "Fullbright", default = false, callback = function(v) setFullbright(v) end })
@@ -2396,6 +2625,11 @@ secTP:Button({
 			Notify("Teleport", "No valid target nearby")
 		end
 	end,
+})
+secTP:Toggle({
+	text = "Spectate Selected",
+	default = false,
+	callback = function(v) setSpectate(v, selectedTarget) end,
 })
 
 local secQuick = Section(3, "Quick Travel & Waypoints")
@@ -2497,6 +2731,17 @@ secUtil:Button({
 		end
 	end,
 })
+secUtil:Button({
+	text = "Copy Server JobId",
+	callback = function()
+		if setclipboard and game.JobId and game.JobId ~= "" then
+			setclipboard(tostring(game.JobId))
+			Notify("Clipboard", "Server JobId copied")
+		else
+			Notify("Clipboard", "JobId unavailable")
+		end
+	end,
+})
 secUtil:Button({ text = "Rejoin Server", style = "filled", callback = rejoin })
 secUtil:Button({ text = "Server Hop", style = "filled", callback = serverHop })
 
@@ -2524,7 +2769,7 @@ secTheme:Toggle({
 })
 secTheme:Button({
 	text = "Test Notification",
-	callback = function() Notify("Gigachad Garage", "Dynamic Island & modules active.") end,
+	callback = function() Notify("Gigachad Garage", "v1.5.0 spacious UI & island ready.") end,
 })
 
 local secKeys = Section(5, "Keybinds")
@@ -2539,7 +2784,7 @@ secKeys:Keybind({
 })
 
 local secAbout = Section(5, "Gigachad Garage")
-secAbout:Info({ text = "Version", value = "1.4.0" })
+secAbout:Info({ text = "Version", value = "1.5.0" })
 secAbout:Info({ text = "Executor", value = ExecutorName })
 secAbout:Info({ text = "Game", value = "Universal" })
 secAbout:Footer("STAY SIGMA.")
@@ -2554,16 +2799,16 @@ local function setUIVisible(v)
 	if v then
 		Holder.Visible = true
 		Window.GroupTransparency = 1
-		WindowScale.Scale = 0.92
-		tween(Window, 0.35, { GroupTransparency = 0 })
-		tween(WindowScale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
-		tween(Shadow, 0.35, { ImageTransparency = 0.5 })
-		task.delay(0.42, function() animBusy = false end)
+		WindowScale.Scale = 0.94
+		tween(Window, 0.42, { GroupTransparency = 0 }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		tween(WindowScale, 0.46, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		tween(Shadow, 0.42, { ImageTransparency = 0.5 }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		task.delay(0.48, function() animBusy = false end)
 	else
-		tween(Window, 0.25, { GroupTransparency = 1 })
-		tween(WindowScale, 0.25, { Scale = 0.92 })
-		tween(Shadow, 0.25, { ImageTransparency = 1 })
-		task.delay(0.3, function()
+		tween(Window, 0.28, { GroupTransparency = 1 }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		tween(WindowScale, 0.28, { Scale = 0.94 }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		tween(Shadow, 0.28, { ImageTransparency = 1 }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		task.delay(0.32, function()
 			Holder.Visible = false
 			animBusy = false
 		end)
@@ -2621,11 +2866,15 @@ local function Unload()
 	State.Noclip = false
 	State.Fly = false
 	State.InfJump = false
+	State.BunnyHop = false
 	State.ClickTP = false
 	State.AntiAFK = false
 	State.SpinBot = false
 	State.FloatMode = false
+	State.WalkWater = false
 	State.Aimbot.Enabled = false
+	radarEnabled = false
+	if State.Spectating then setSpectate(false) end
 	if State.Freecam then setFreecam(false) end
 
 	pcall(function() setFullbright(false) end)
@@ -2635,6 +2884,7 @@ local function Unload()
 	pcall(function() espClearAll() end)
 	if flyBV then flyBV:Destroy() flyBV = nil end
 	if floatPart then floatPart:Destroy() floatPart = nil end
+	if waterPart then waterPart:Destroy() waterPart = nil end
 	if fovCircle then pcall(function() fovCircle:Remove() end) end
 
 	pcall(function() workspace.Gravity = OriginalGravity end)
@@ -2662,7 +2912,7 @@ secAbout:Button({
 
 if getgenv then
 	getgenv().GIGACHAD_GARAGE = {
-		Version = "1.4.0",
+		Version = "1.5.0",
 		Unload = Unload,
 		Notify = Notify,
 	}
@@ -2755,27 +3005,27 @@ local SHint = new("TextLabel", {
 selectTab(1)
 
 task.spawn(function()
-	task.wait(0.25)
-	tween(SBrand, 0.5, { TextTransparency = 0 })
-	tween(SBrand, 0.5, { Position = UDim2.new(0.5, 0, 0.4, 0) })
-	tween(SSub, 0.45, { TextTransparency = 0 }, nil, nil, 0.12)
-	tween(SSub, 0.45, { Position = UDim2.new(0.5, 0, 0.4, 32) }, nil, nil, 0.12)
-	tween(SDiv, 0.45, { Size = UDim2.fromOffset(140, 1) }, nil, nil, 0.2)
-	tween(SFill, 0.75, { Size = UDim2.fromScale(1, 1) }, nil, nil, 0.3)
-	tween(SCap, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.45)
-	tween(SHint, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.55)
-	task.wait(1.35)
+	task.wait(0.22)
+	tween(SBrand, 0.52, { TextTransparency = 0 })
+	tween(SBrand, 0.52, { Position = UDim2.new(0.5, 0, 0.4, 0) })
+	tween(SSub, 0.46, { TextTransparency = 0 }, nil, nil, 0.12)
+	tween(SSub, 0.46, { Position = UDim2.new(0.5, 0, 0.4, 32) }, nil, nil, 0.12)
+	tween(SDiv, 0.46, { Size = UDim2.fromOffset(140, 1) }, nil, nil, 0.2)
+	tween(SFill, 0.75, { Size = UDim2.fromScale(1, 1) }, nil, nil, 0.28)
+	tween(SCap, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.42)
+	tween(SHint, 0.4, { TextTransparency = 0.85 }, nil, nil, 0.52)
+	task.wait(1.3)
 
-	tween(Splash, 0.38, { GroupTransparency = 1 })
-	tween(SplashScale, 0.38, { Scale = 1.03 })
+	tween(Splash, 0.4, { GroupTransparency = 1 })
+	tween(SplashScale, 0.4, { Scale = 1.03 })
 
-	tween(Window, 0.48, { GroupTransparency = 0 })
-	tween(WindowScale, 0.52, { Scale = 1 }, Enum.EasingStyle.Back)
-	tween(Shadow, 0.48, { ImageTransparency = 0.5 })
+	tween(Window, 0.5, { GroupTransparency = 0 })
+	tween(WindowScale, 0.55, { Scale = 1 }, Enum.EasingStyle.Back)
+	tween(Shadow, 0.5, { ImageTransparency = 0.5 })
 
-	task.delay(0.42, function() Splash:Destroy() end)
+	task.delay(0.44, function() Splash:Destroy() end)
 	task.delay(0.65, function()
-		Notify("Gigachad Garage", "v1.4.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
+		Notify("Gigachad Garage", "v1.5.0 loaded on " .. ExecutorName .. ". Press Right Shift to toggle.")
 	end)
 end)
 
@@ -2787,7 +3037,7 @@ end, function(e)
 end)
 
 if ok then
-	print("[Gigachad Garage] v1.4.0 loaded successfully on " .. tostring(ExecutorName))
+	print("[Gigachad Garage] v1.5.0 loaded successfully on " .. tostring(ExecutorName))
 	task.defer(Boot.Finish)
 else
 	Boot.Error(err)
